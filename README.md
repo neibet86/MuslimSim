@@ -51,6 +51,10 @@ Current development status, based on the maintainer's cockpit testing:
 
 Coverage varies by device and aircraft; this is a work in progress, not a claim that every combination is finished.
 
+### Every device and what has been achieved
+
+Read the [device-by-device progress guide](docs/DEVICE_ACHIEVEMENTS.md) for every integrated device, hardware variant, MOZA force-feedback service and community profile. It explains the purpose, completed work, live confirmations and remaining work for each, without treating unfinished profiles as fully supported hardware.
+
 ### MCDU and PFP page switching
 
 The physical keypad also controls the displayed cockpit page: **double-tap `/` to cycle pages**, and **triple-tap `.` to switch between the CDU/FMC and PFD view**. The page sequence depends on the aircraft and panel.
@@ -85,6 +89,7 @@ Studio manages the hardware bridge. Run one bridge at a time so hardware readers
 
 ## Documentation
 
+- [Every device: achievements and remaining work](docs/DEVICE_ACHIEVEMENTS.md)
 - [Device reference](DEVICE_REFERENCE.md)
 - [System architecture](SYSTEM_ARCHITECTURE.md)
 - [Control panel guide](CONTROL_PANEL.md)

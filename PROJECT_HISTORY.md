@@ -1,5 +1,18 @@
 # MuslimSim project history
 
+## 2026-09-12 - Public device-by-device achievements guide
+
+Added [DEVICE_ACHIEVEMENTS.md](docs/DEVICE_ACHIEVEMENTS.md), covering all 25
+catalogue entries, separate BB51/BB61 PDC variants, display-family identities
+and MOZA accessories. Each device has its purpose, implemented/captured work
+and remaining limitations; community profile groundwork is distinguished
+from completed runtime support. README links the guide prominently.
+
+Recorded the owner's successful 3M PDC backlight check in both Practice and
+Live. Retained the existing confirmed A210 presence and throttle feedback
+results, and the stated Zibo, LevelUp, ToLiss and MSFS24 development status.
+Documentation only: no device code, profiles, assignments or outputs changed.
+
 ## 2026-09-11 - 3M PDC backlight and public compatibility status
 
 Owner-requested exception: verified 3M PDC BB51/BB52 backlights stay at 255

@@ -1,10 +1,28 @@
 # MuslimSim changelog
 
+## 2026-09-12 - Public device-by-device achievements guide
+
+Validation: all 25 catalogue entries covered; README/guide local links PASS;
+mandatory known-regression suite PASS (including independent controller inputs,
+PDC remap replay and active-backlight/shutdown guards). No new live test run.
+
+Added [DEVICE_ACHIEVEMENTS.md](docs/DEVICE_ACHIEVEMENTS.md), covering all 25
+catalogue entries, separate BB51/BB61 PDC variants, display-family identities
+and MOZA accessories. Each device has its purpose, implemented/captured work
+and remaining limitations; community profile groundwork is distinguished
+from completed runtime support. README links the guide prominently.
+
+Recorded the owner's successful 3M PDC backlight check in both Practice and
+Live. Retained the existing confirmed A210 presence and throttle feedback
+results, and the stated Zibo, LevelUp, ToLiss and MSFS24 development status.
+Documentation only: no device code, profiles, assignments or outputs changed.
+
 ## 2026-09-11 - 3M PDC backlight and public compatibility status
 
 Validation: mandatory regression suite, existing fixed-PDC packet checks and
 new 3M active-backlight/shutdown checks PASS. Documentation links verified.
-Live backlight confirmation is pending after Studio reload.
+Owner confirmed after Studio reload: the 3M PDC backlight stays on in both
+Practice and Live.
 
 Owner-requested exception: verified 3M PDC BB51/BB52 backlights stay at 255
 while the device owner runs in Practice or Live, including simulator-off,
@@ -49,8 +67,8 @@ After Studio reopened, the existing bridge reported physical MOZA presence
 and WINCTRL/TCA input values with the simulator disconnected. Owner confirmed: A210 stays visible and both throttle sliders move.
 
 Validation: actual reader exercised with fake SDL controllers, independent and
-combined devices, both TCA banks, moving and stationary inputs. Live confirmation
-requires reopening Studio to load the changed modules.
+combined devices, both TCA banks, moving and stationary inputs. Owner subsequently confirmed A210 visibility and both throttle sliders
+after Studio reload; see the confirmation above.
 
 
 ## 2026-09-11 - Public collaboration preparation
