@@ -1,0 +1,47 @@
+{
+  "schema": "muslimsim-device-v1",
+
+  "key": "thrustmaster_tca_airbus",
+  "title": "Thrustmaster TCA Officer Pack Airbus Edition",
+  "transports": ["hid", "sdl"],
+  "driver": "muslimsim.hardware.generic_hid",
+  "driver_family": "windows-hid-game",
+  "replaceable_unit": true,
+  "notes": "Community profile. Covers the TCA Airbus sidestick (PID 0408) and throttle (PID 0409). Each unit enumerates independently. VID 044F is Thrustmaster.",
+
+  "usb_ids": [["0x044F", "0x0408"], ["0x044F", "0x0409"]],
+  "product_tokens": ["TCA OFFICER", "TCA AIRBUS", "TCA SIDESTICK AIRBUS", "TCA THROTTLE AIRBUS"],
+  "aliases": ["tca_airbus", "tca_sidestick", "tca_throttle_airbus"],
+
+  "inputs": [
+    { "key": "axis_x",          "label": "Roll / sidestick X",     "kind": "axis",     "raw": "SDL axis 0" },
+    { "key": "axis_y",          "label": "Pitch / sidestick Y",    "kind": "axis",     "raw": "SDL axis 1" },
+    { "key": "axis_throttle_1", "label": "Throttle 1 (left)",      "kind": "axis",     "raw": "SDL axis 2" },
+    { "key": "axis_throttle_2", "label": "Throttle 2 (right)",     "kind": "axis",     "raw": "SDL axis 3" },
+    { "key": "hat",             "label": "Hat switch",              "kind": "selector", "raw": "SDL hat 0",
+      "choices": ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "CENTER"] },
+    { "key": "button_01",  "label": "Button 1",     "kind": "button", "raw": "SDL button 0" },
+    { "key": "button_02",  "label": "Button 2",     "kind": "button", "raw": "SDL button 1" },
+    { "key": "button_03",  "label": "Button 3",     "kind": "button", "raw": "SDL button 2" },
+    { "key": "button_04",  "label": "Button 4",     "kind": "button", "raw": "SDL button 3" },
+    { "key": "button_05",  "label": "Button 5",     "kind": "button", "raw": "SDL button 4" },
+    { "key": "button_06",  "label": "Button 6",     "kind": "button", "raw": "SDL button 5" },
+    { "key": "button_07",  "label": "Button 7",     "kind": "button", "raw": "SDL button 6" },
+    { "key": "button_08",  "label": "Button 8",     "kind": "button", "raw": "SDL button 7" },
+    { "key": "button_09",  "label": "Button 9",     "kind": "button", "raw": "SDL button 8" },
+    { "key": "button_toga",     "label": "TOGA",       "kind": "button", "raw": "SDL button 9" },
+    { "key": "button_autopilot","label": "Autopilot",  "kind": "button", "raw": "SDL button 10" },
+    { "key": "button_athr",     "label": "A/THR",      "kind": "button", "raw": "SDL button 11" },
+    { "key": "button_instpb",   "label": "INSTPB",     "kind": "button", "raw": "SDL button 12" },
+    { "key": "button_exp_mode", "label": "Expedite / EXP mode", "kind": "button", "raw": "SDL button 13" }
+  ],
+
+  "outputs": [],
+
+  "default_roles": {
+    "axis_x":          "X-Plane: aileron",
+    "axis_y":          "X-Plane: elevator",
+    "axis_throttle_1": "X-Plane: throttle engine 1",
+    "axis_throttle_2": "X-Plane: throttle engine 2"
+  }
+}

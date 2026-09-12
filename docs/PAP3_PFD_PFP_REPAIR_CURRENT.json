@@ -1,0 +1,21 @@
+{
+  "version": "2026.08.27.2",
+  "installed_at": "2026-08-27T19:58:02.087412-06:00",
+  "root": "D:\\MuslimSim",
+  "bridge": "D:\\MuslimSim\\bridge\\final.py",
+  "bb35_module": "D:\\MuslimSim\\muslimsim\\devices\\pfp_bb35_separate_paths.py",
+  "backup_directory": "D:\\MuslimSim\\backups\\pap3-pfd-pfp-repair-20260827-195801",
+  "at_switch_type": "magnetic",
+  "files": [
+    "D:\\MuslimSim\\bridge\\final.py",
+    "D:\\MuslimSim\\muslimsim\\devices\\pfp_bb35_separate_paths.py",
+    "D:\\MuslimSim\\muslimsim\\devices\\pap3_mcp.py",
+    "D:\\MuslimSim\\muslimsim\\devices\\winctrl_output_bus.py",
+    "D:\\MuslimSim\\tools\\patch_muslimsim_pap3.py",
+    "D:\\MuslimSim\\tools\\patch_bb35_pfd_pfp_handoff.py",
+    "D:\\MuslimSim\\tools\\winctrl_pap3_probe.py",
+    "D:\\MuslimSim\\docs\\README_PAP3_PFD_PFP_REPAIR.md",
+    "D:\\MuslimSim\\docs\\THIRD_PARTY_NOTICES_PAP3.md",
+    "D:\\MuslimSim\\docs\\PAP3_PFD_PFP_REPAIR_CURRENT.json"
+  ]
+}

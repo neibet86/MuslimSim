@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "enabled": {
+    "pu_overhead": false,
+    "winctrl": true,
+    "pedals": false,
+    "agp": false,
+    "pfp": true,
+    "mcdu": true,
+    "pap3": false,
+    "pdc": false
+  },
+  "options": {
+    "pu_overhead": {},
+    "winctrl": {},
+    "pedals": {},
+    "agp": {},
+    "pfp": {},
+    "mcdu": {},
+    "pap3": {},
+    "pdc": {}
+  },
+  "globals": {},
+  "diagnose": {
+    "pu_overhead": false,
+    "winctrl": false,
+    "pedals": false,
+    "agp": false,
+    "pfp": false,
+    "mcdu": false,
+    "pap3": false,
+    "pdc": false
+  },
+  "extra_arguments": "",
+  "axis_calibrations": {
+    "WINCTRL Orion Combat Rudder Pedals Metal": {}
+  },
+  "throttle": {
+    "left": {
+      "idle_raw": 20165,
+      "rev_idle_raw": 14115,
+      "max_raw": 65535,
+      "full_rev_raw": 0
+    },
+    "right": {
+      "idle_raw": 20165,
+      "rev_idle_raw": 14115,
+      "max_raw": 65535,
+      "full_rev_raw": 0
+    },
+    "calibrated": false
+  },
+  "profiles": {
+    "Full cockpit": {
+      "version": 1,
+      "enabled": {
+        "pu_overhead": true,
+        "winctrl": true,
+        "pedals": true,
+        "agp": true,
+        "pfp": true,
+        "mcdu": true,
+        "pap3": true,
+        "pdc": true
+      },
+      "options": {
+        "pu_overhead": {},
+        "winctrl": {},
+        "pedals": {},
+        "agp": {},
+        "pfp": {},
+        "mcdu": {},
+        "pap3": {},
+        "pdc": {}
+      },
+      "globals": {},
+      "diagnose": {
+        "pu_overhead": false,
+        "winctrl": false,
+        "pedals": false,
+        "agp": false,
+        "pfp": false,
+        "mcdu": false,
+        "pap3": false,
+        "pdc": false
+      },
+      "extra_arguments": ""
+    },
+    "Displays only": {
+      "version": 1,
+      "enabled": {
+        "pu_overhead": false,
+        "winctrl": true,
+        "pedals": false,
+        "agp": false,
+        "pfp": true,
+        "mcdu": true,
+        "pap3": false,
+        "pdc": false
+      },
+      "options": {
+        "pu_overhead": {},
+        "winctrl": {},
+        "pedals": {},
+        "agp": {},
+        "pfp": {},
+        "mcdu": {},
+        "pap3": {},
+        "pdc": {}
+      },
+      "globals": {},
+      "diagnose": {
+        "pu_overhead": false,
+        "winctrl": false,
+        "pedals": false,
+        "agp": false,
+        "pfp": false,
+        "mcdu": false,
+        "pap3": false,
+        "pdc": false
+      },
+      "extra_arguments": ""
+    },
+    "Dry run (no hardware)": {
+      "version": 1,
+      "enabled": {
+        "pu_overhead": false,
+        "winctrl": false,
+        "pedals": false,
+        "agp": false,
+        "pfp": false,
+        "mcdu": false,
+        "pap3": false,
+        "pdc": false
+      },
+      "options": {
+        "pu_overhead": {},
+        "winctrl": {},
+        "pedals": {},
+        "agp": {},
+        "pfp": {},
+        "mcdu": {},
+        "pap3": {},
+        "pdc": {}
+      },
+      "globals": {
+        "--dry-run": true
+      },
+      "diagnose": {
+        "pu_overhead": false,
+        "winctrl": false,
+        "pedals": false,
+        "agp": false,
+        "pfp": false,
+        "mcdu": false,
+        "pap3": false,
+        "pdc": false
+      },
+      "extra_arguments": ""
+    }
+  },
+  "active_profile": "Displays only"
+}

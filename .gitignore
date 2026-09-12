@@ -1,0 +1,40 @@
+# Local backups, diagnostics and generated builds
+/Backup/
+/backups/
+/build/
+/dist/
+/artifacts/
+/AUDIT/
+/design_archives/
+/diagnostics/
+/logs/
+/.claude/
+__pycache__/
+*.py[cod]
+*.log
+# Large raw USB recordings stay on the capture workstation.
+/captures/*
+!/captures/PDC_3M_BB51_GUIDED_20260911_215753.json
+*.pcap
+*.pcapng
+# Local credentials and scratch material
+.env
+.env.*
+*.pem
+*.key
+/New Text Document.txt
+/*scratch*
+/gaze.txt
+/gaze2.txt
+/Screenshot*.png
+
+# Historical archives and generated native build products
+*.bak
+*.orig
+*.zip
+*.obj
+*.exp
+*.lib
+*.xpl
+*.exe
+*.pdb

@@ -1,0 +1,60 @@
+{
+  "schema": "muslimsim-device-v1",
+
+  "key": "logitech_x52_pro",
+  "title": "Logitech / Saitek X52 Pro Flight System",
+  "transports": ["hid", "sdl"],
+  "driver": "muslimsim.hardware.generic_hid",
+  "driver_family": "windows-hid-game",
+  "replaceable_unit": true,
+  "notes": "Community profile. Covers the X52 Pro HOTAS (stick + throttle as one composite SDL device). The X52 Pro is VID 06A3 PID 0255; the non-Pro X52 is 06A3:0052 — listed separately below via aliases so Studio shows the same control map for both.",
+
+  "usb_ids": [["0x06A3", "0x0255"], ["0x06A3", "0x0052"]],
+  "product_tokens": ["X52 PRO", "X52PRO", "SAITEK X52", "LOGITECH X52"],
+  "aliases": ["saitek_x52_pro", "x52_pro", "x52"],
+
+  "inputs": [
+    { "key": "axis_x",        "label": "Stick roll (X)",           "kind": "axis",     "raw": "SDL axis 0" },
+    { "key": "axis_y",        "label": "Stick pitch (Y)",          "kind": "axis",     "raw": "SDL axis 1" },
+    { "key": "axis_z",        "label": "Stick twist / rudder (Z)", "kind": "axis",     "raw": "SDL axis 2" },
+    { "key": "axis_throttle", "label": "Throttle",                 "kind": "axis",     "raw": "SDL axis 3" },
+    { "key": "axis_rx",       "label": "Rotary 1 (Rx)",            "kind": "axis",     "raw": "SDL axis 4" },
+    { "key": "axis_ry",       "label": "Rotary 2 (Ry)",            "kind": "axis",     "raw": "SDL axis 5" },
+    { "key": "axis_slider",   "label": "Thumb slider",             "kind": "axis",     "raw": "SDL axis 6" },
+    { "key": "hat_1",         "label": "Hat switch 1 (POV)",       "kind": "selector", "raw": "SDL hat 0",
+      "choices": ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "CENTER"] },
+    { "key": "hat_2",         "label": "Hat switch 2 (mouse nub)", "kind": "selector", "raw": "SDL hat 1",
+      "choices": ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "CENTER"],
+      "notes": "The mouse nub functions as a hat in joystick mode." },
+    { "key": "button_trigger_stage1", "label": "Trigger stage 1",  "kind": "button",   "raw": "SDL button 0" },
+    { "key": "button_trigger_stage2", "label": "Trigger stage 2",  "kind": "button",   "raw": "SDL button 1" },
+    { "key": "button_a",      "label": "Button A",                 "kind": "button",   "raw": "SDL button 2" },
+    { "key": "button_b",      "label": "Button B",                 "kind": "button",   "raw": "SDL button 3" },
+    { "key": "button_c",      "label": "Button C",                 "kind": "button",   "raw": "SDL button 4" },
+    { "key": "button_pinky",  "label": "Pinky (shift) button",     "kind": "button",   "raw": "SDL button 5" },
+    { "key": "button_d",      "label": "Button D",                 "kind": "button",   "raw": "SDL button 6" },
+    { "key": "button_e",      "label": "Button E",                 "kind": "button",   "raw": "SDL button 7" },
+    { "key": "button_t1",     "label": "Toggle T1",                "kind": "button",   "raw": "SDL button 8" },
+    { "key": "button_t2",     "label": "Toggle T2",                "kind": "button",   "raw": "SDL button 9" },
+    { "key": "button_t3",     "label": "Toggle T3",                "kind": "button",   "raw": "SDL button 10" },
+    { "key": "button_t4",     "label": "Toggle T4",                "kind": "button",   "raw": "SDL button 11" },
+    { "key": "button_t5",     "label": "Toggle T5",                "kind": "button",   "raw": "SDL button 12" },
+    { "key": "button_t6",     "label": "Toggle T6",                "kind": "button",   "raw": "SDL button 13" },
+    { "key": "button_mode_1", "label": "Mode selector 1",          "kind": "button",   "raw": "SDL button 14" },
+    { "key": "button_mode_2", "label": "Mode selector 2",          "kind": "button",   "raw": "SDL button 15" },
+    { "key": "button_mode_3", "label": "Mode selector 3",          "kind": "button",   "raw": "SDL button 16" },
+    { "key": "button_scroll_click", "label": "Scroll wheel click", "kind": "button",   "raw": "SDL button 17" },
+    { "key": "button_scroll_up",    "label": "Scroll wheel up",    "kind": "button",   "raw": "SDL button 18" },
+    { "key": "button_scroll_down",  "label": "Scroll wheel down",  "kind": "button",   "raw": "SDL button 19" },
+    { "key": "button_i",      "label": "Button i",                 "kind": "button",   "raw": "SDL button 20" }
+  ],
+
+  "outputs": [],
+
+  "default_roles": {
+    "axis_x":        "X-Plane: aileron",
+    "axis_y":        "X-Plane: elevator",
+    "axis_z":        "X-Plane: rudder",
+    "axis_throttle": "X-Plane: throttle (single)"
+  }
+}

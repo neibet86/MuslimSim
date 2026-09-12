@@ -1,0 +1,54 @@
+{
+  "schema": "muslimsim-device-v1",
+
+  "key": "logitech_saitek_multi_panel",
+  "title": "Logitech / Saitek Pro Flight Multi Panel",
+  "transports": ["hid"],
+  "driver": "muslimsim.hardware.generic_hid",
+  "driver_family": "windows-hid",
+  "replaceable_unit": true,
+  "notes": "Community profile. HID autopilot panel (VID 06A3 PID 0D06). Input buttons are capture-verified against published HID descriptors. The LCD displays (speed, heading, alt, vs windows) are not driven in this profile — output packets were not captured and Rule 0.1 requires a proven OFF state before any output is enabled.",
+
+  "usb_ids": [["0x06A3", "0x0D06"]],
+  "product_tokens": ["MULTI PANEL", "SAITEK MULTI", "LOGITECH MULTI PANEL", "PRO FLIGHT MULTI"],
+  "aliases": ["saitek_multi_panel", "multi_panel"],
+
+  "inputs": [
+    { "key": "button_ap",       "label": "AP (autopilot)",         "kind": "button", "raw": "HID report bit 0" },
+    { "key": "button_hdg",      "label": "HDG",                    "kind": "button", "raw": "HID report bit 1" },
+    { "key": "button_nav",      "label": "NAV",                    "kind": "button", "raw": "HID report bit 2" },
+    { "key": "button_ias",      "label": "IAS",                    "kind": "button", "raw": "HID report bit 3" },
+    { "key": "button_alt",      "label": "ALT",                    "kind": "button", "raw": "HID report bit 4" },
+    { "key": "button_vs",       "label": "VS",                     "kind": "button", "raw": "HID report bit 5" },
+    { "key": "button_apr",      "label": "APR",                    "kind": "button", "raw": "HID report bit 6" },
+    { "key": "button_rev",      "label": "REV",                    "kind": "button", "raw": "HID report bit 7" },
+    { "key": "knob_up",         "label": "Selector knob up",       "kind": "rotary", "raw": "HID report bit 8",
+      "notes": "Continuous encoder, clockwise step." },
+    { "key": "knob_down",       "label": "Selector knob down",     "kind": "rotary", "raw": "HID report bit 9",
+      "notes": "Continuous encoder, counter-clockwise step." },
+    { "key": "button_flap_up",  "label": "Flaps UP",               "kind": "button", "raw": "HID report bit 10" },
+    { "key": "button_flap_dn",  "label": "Flaps DOWN",             "kind": "button", "raw": "HID report bit 11" },
+    { "key": "button_athr",     "label": "Autothrottle ARM",       "kind": "button", "raw": "HID report bit 12" },
+    { "key": "selector_mode",   "label": "Display mode selector",  "kind": "selector","raw": "HID report bits 13..15 one-hot",
+      "choices": ["IAS", "HDG", "CRS", "ALT", "VS"] }
+  ],
+
+  "outputs": [
+    { "key": "lcd_top",    "label": "Top LCD row",    "kind": "display", "raw": "HID output report — not captured",
+      "status": "unknown",
+      "notes": "Output packet format not captured. No writes sent until a confirmed OFF state is proven." },
+    { "key": "lcd_bottom", "label": "Bottom LCD row", "kind": "display", "raw": "HID output report — not captured",
+      "status": "unknown",
+      "notes": "Output packet format not captured. No writes sent until a confirmed OFF state is proven." }
+  ],
+
+  "default_roles": {
+    "button_ap":  "X-Plane: autopilot toggle",
+    "button_hdg": "X-Plane: AP heading hold",
+    "button_nav": "X-Plane: AP NAV hold",
+    "button_alt": "X-Plane: AP altitude hold",
+    "button_vs":  "X-Plane: AP vertical speed hold",
+    "button_apr": "X-Plane: AP approach mode",
+    "button_athr":"X-Plane: autothrottle toggle"
+  }
+}

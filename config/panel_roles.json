@@ -1,0 +1,11 @@
+{
+  "schema": "muslimsim-panel-roles-v1",
+  "sides": {
+    "pdc_bb51": "Captain / left",
+    "pdc_bb62": "Captain / left",
+    "pdc_bb61_left": "First officer / right",
+    "pdc_bb52_right": "First officer / right",
+    "pfp3n_bb35": "Captain / left",
+    "mcdu32_bb36": "Captain / left"
+  }
+}

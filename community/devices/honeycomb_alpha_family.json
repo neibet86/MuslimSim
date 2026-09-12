@@ -1,0 +1,56 @@
+{
+  "schema": "muslimsim-device-v1",
+
+  "key": "honeycomb_alpha",
+  "title": "Honeycomb Aeronautical Alpha / Alpha XL Yoke",
+  "transports": ["hid", "sdl"],
+  "driver": "muslimsim.hardware.generic_hid",
+  "driver_family": "windows-hid-game",
+  "replaceable_unit": true,
+  "notes": "Covers both the original Alpha and Alpha XL; both share VID 294B PID 0070. Community profile — verify control labels against your firmware version.",
+
+  "usb_ids": [["0x294B", "0x0070"]],
+  "product_tokens": ["HONEYCOMB ALPHA", "ALPHA XL", "ALPHA FLIGHT CONTROLS"],
+  "aliases": ["honeycomb_alpha_xl", "alpha_yoke"],
+
+  "inputs": [
+    { "key": "axis_aileron",   "label": "Aileron (left / right)",  "kind": "axis",     "raw": "SDL axis 0" },
+    { "key": "axis_elevator",  "label": "Elevator (fore / aft)",   "kind": "axis",     "raw": "SDL axis 1" },
+    { "key": "hat",            "label": "Hat switch",               "kind": "selector", "raw": "SDL hat 0",
+      "choices": ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "CENTER"] },
+    { "key": "button_ptt",     "label": "PTT / Trigger",            "kind": "button",   "raw": "SDL button 0" },
+    { "key": "button_02",      "label": "Button 2",                 "kind": "button",   "raw": "SDL button 1" },
+    { "key": "button_03",      "label": "Button 3",                 "kind": "button",   "raw": "SDL button 2" },
+    { "key": "button_04",      "label": "Button 4",                 "kind": "button",   "raw": "SDL button 3" },
+    { "key": "button_05",      "label": "Button 5",                 "kind": "button",   "raw": "SDL button 4" },
+    { "key": "button_06",      "label": "Button 6",                 "kind": "button",   "raw": "SDL button 5" },
+    { "key": "button_07",      "label": "Button 7",                 "kind": "button",   "raw": "SDL button 6" },
+    { "key": "button_08",      "label": "Button 8",                 "kind": "button",   "raw": "SDL button 7" },
+    { "key": "button_09",      "label": "Button 9",                 "kind": "button",   "raw": "SDL button 8" },
+    { "key": "button_10",      "label": "Button 10",                "kind": "button",   "raw": "SDL button 9" },
+    { "key": "button_11",      "label": "Button 11",                "kind": "button",   "raw": "SDL button 10" },
+    { "key": "button_12",      "label": "Button 12",                "kind": "button",   "raw": "SDL button 11" },
+    { "key": "button_gear_up",   "label": "Landing gear UP",        "kind": "button",   "raw": "SDL button 12",
+      "notes": "Held toggle — gear up position." },
+    { "key": "button_gear_down", "label": "Landing gear DOWN",      "kind": "button",   "raw": "SDL button 13",
+      "notes": "Held toggle — gear down position." },
+    { "key": "button_mag_off",   "label": "Magneto OFF",            "kind": "button",   "raw": "SDL button 14" },
+    { "key": "button_mag_r",     "label": "Magneto RIGHT",          "kind": "button",   "raw": "SDL button 15" },
+    { "key": "button_mag_l",     "label": "Magneto LEFT",           "kind": "button",   "raw": "SDL button 16" },
+    { "key": "button_mag_both",  "label": "Magneto BOTH",           "kind": "button",   "raw": "SDL button 17" },
+    { "key": "button_mag_start", "label": "Magneto START",          "kind": "button",   "raw": "SDL button 18" },
+    { "key": "button_master_alt_off", "label": "Master ALT OFF",   "kind": "button",   "raw": "SDL button 19" },
+    { "key": "button_master_alt_on",  "label": "Master ALT ON",    "kind": "button",   "raw": "SDL button 20" },
+    { "key": "button_master_bat_off", "label": "Master BAT OFF",   "kind": "button",   "raw": "SDL button 21" },
+    { "key": "button_master_bat_on",  "label": "Master BAT ON",    "kind": "button",   "raw": "SDL button 22" },
+    { "key": "button_avionics_off",   "label": "Avionics BUS 1 OFF", "kind": "button", "raw": "SDL button 23" },
+    { "key": "button_avionics_on",    "label": "Avionics BUS 1 ON",  "kind": "button", "raw": "SDL button 24" }
+  ],
+
+  "outputs": [],
+
+  "default_roles": {
+    "axis_aileron":  "X-Plane: aileron",
+    "axis_elevator": "X-Plane: elevator"
+  }
+}

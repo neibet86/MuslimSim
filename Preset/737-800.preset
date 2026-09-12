@@ -1,0 +1,34 @@
+{
+    "date": "1788844553",
+    "device_params": {
+        "FiveWaySwitchMode": 0,
+        "HallTriggerAxisMode": 0,
+        "LedBrightness": 15,
+        "LedColor": "ffb300",
+        "LedMode": 0,
+        "LeftJoystickCurMode": 0,
+        "LeftJoystickMode1": 0,
+        "LeftJoystickMode2": 1,
+        "LeftJoystickPushMode": 1,
+        "LeftTriggerButtonMode": 2,
+        "RightJoystickCurMode": 0,
+        "RightJoystickMode1": 0,
+        "RightJoystickMode2": 1,
+        "RightJoystickPushMode": 1,
+        "RightTriggerButtonMode": 2
+    },
+    "device_type": "Joystick",
+    "devices": [
+        "MFY"
+    ],
+    "games": [
+        "x_plane_12"
+    ],
+    "name": "Boeing737",
+    "product_type": "AS23",
+    "telemetry_params": {
+    },
+    "uuid": "{23829eab-e30d-48a9-998e-35dc22b7beb5}",
+    "vehicles": "Boeing 737-800/b738.acf",
+    "version": "1.0.4"
+}

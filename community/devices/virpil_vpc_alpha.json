@@ -1,0 +1,52 @@
+{
+  "schema": "muslimsim-device-v1",
+
+  "key": "virpil_vpc_alpha",
+  "title": "VPC Alpha Prime / WarBRD-D Stick",
+  "transports": ["hid", "sdl"],
+  "driver": "muslimsim.hardware.generic_hid",
+  "driver_family": "windows-hid-game",
+  "replaceable_unit": true,
+  "notes": "Community profile. VPC sticks enumerate under VID 3344. Multiple PIDs are in use across firmware revisions — add your specific PID from Device Manager if your unit is not listed. Button numbering is from published HID descriptor.",
+
+  "usb_ids": [
+    ["0x3344", "0x00FF"],
+    ["0x3344", "0x0193"],
+    ["0x3344", "0x8193"]
+  ],
+  "product_tokens": ["VIRPIL", "VPC ALPHA", "WARBRD", "VPC STICK"],
+  "aliases": ["virpil_alpha", "vpc_alpha", "warbrd"],
+
+  "inputs": [
+    { "key": "axis_x",    "label": "Roll (X)",             "kind": "axis",     "raw": "SDL axis 0" },
+    { "key": "axis_y",    "label": "Pitch (Y)",            "kind": "axis",     "raw": "SDL axis 1" },
+    { "key": "axis_z",    "label": "Twist / rudder (Z)",   "kind": "axis",     "raw": "SDL axis 2",
+      "notes": "Only present on sticks with a twist grip." },
+    { "key": "axis_rx",   "label": "Rx axis",              "kind": "axis",     "raw": "SDL axis 3" },
+    { "key": "axis_ry",   "label": "Ry axis",              "kind": "axis",     "raw": "SDL axis 4" },
+    { "key": "hat_1",     "label": "Hat switch 1",         "kind": "selector", "raw": "SDL hat 0",
+      "choices": ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "CENTER"] },
+    { "key": "hat_2",     "label": "Hat switch 2",         "kind": "selector", "raw": "SDL hat 1",
+      "choices": ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "CENTER"] },
+    { "key": "button_01", "label": "Button 1 (trigger)",   "kind": "button",   "raw": "SDL button 0" },
+    { "key": "button_02", "label": "Button 2",             "kind": "button",   "raw": "SDL button 1" },
+    { "key": "button_03", "label": "Button 3",             "kind": "button",   "raw": "SDL button 2" },
+    { "key": "button_04", "label": "Button 4",             "kind": "button",   "raw": "SDL button 3" },
+    { "key": "button_05", "label": "Button 5",             "kind": "button",   "raw": "SDL button 4" },
+    { "key": "button_06", "label": "Button 6",             "kind": "button",   "raw": "SDL button 5" },
+    { "key": "button_07", "label": "Button 7",             "kind": "button",   "raw": "SDL button 6" },
+    { "key": "button_08", "label": "Button 8",             "kind": "button",   "raw": "SDL button 7" },
+    { "key": "button_09", "label": "Button 9",             "kind": "button",   "raw": "SDL button 8" },
+    { "key": "button_10", "label": "Button 10",            "kind": "button",   "raw": "SDL button 9" },
+    { "key": "button_11", "label": "Button 11",            "kind": "button",   "raw": "SDL button 10" },
+    { "key": "button_12", "label": "Button 12",            "kind": "button",   "raw": "SDL button 11" }
+  ],
+
+  "outputs": [],
+
+  "default_roles": {
+    "axis_x": "X-Plane: aileron",
+    "axis_y": "X-Plane: elevator",
+    "axis_z": "X-Plane: rudder"
+  }
+}

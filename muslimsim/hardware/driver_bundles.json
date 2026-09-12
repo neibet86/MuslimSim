@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "policy": "MuslimSim may install only a local INF package that is listed here, matches its recorded SHA-256, and has a valid Authenticode signature from an allowed signer. No web download and no unsigned driver install.",
+  "families": {
+    "windows-native": {
+      "title": "Windows native class driver",
+      "expected": "Built into/supplied by Windows; no MuslimSim driver package required."
+    },
+    "windows-hid": {
+      "title": "Windows HID class",
+      "expected": "Built into Windows."
+    },
+    "windows-game": {
+      "title": "Windows HID/DirectInput game controller class",
+      "expected": "Built into Windows."
+    },
+    "windows-hid-game": {
+      "title": "Windows HID + game controller class",
+      "expected": "Built into Windows."
+    },
+    "wch-ch34x": {
+      "title": "WCH CH340/CH341 USB serial",
+      "expected": "Windows/WCH signed USB-serial driver. A reviewed signed INF may be embedded in a later MuslimSim release."
+    },
+    "pu-composite": {
+      "title": "PU composite USB/HID/serial",
+      "expected": "Windows or reviewed signed device driver exposing the PU serial/HID interfaces. No cockpit application is required."
+    }
+  },
+  "packages": []
+}

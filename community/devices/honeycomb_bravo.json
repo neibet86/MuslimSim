@@ -1,0 +1,58 @@
+{
+  "schema": "muslimsim-device-v1",
+
+  "key": "honeycomb_bravo",
+  "title": "Honeycomb Aeronautical Bravo Throttle Quadrant",
+  "transports": ["hid", "sdl"],
+  "driver": "muslimsim.hardware.generic_hid",
+  "driver_family": "windows-hid-game",
+  "replaceable_unit": true,
+  "notes": "Community profile. The Bravo exposes 6 axes (throttle levers and trim wheels) and a large number of buttons (AP panel, flaps, spoilers, gear, annunciators). Button numbering verified against publicly documented HID descriptor.",
+
+  "usb_ids": [["0x294B", "0x006D"]],
+  "product_tokens": ["HONEYCOMB BRAVO", "BRAVO THROTTLE"],
+  "aliases": ["bravo_throttle"],
+
+  "inputs": [
+    { "key": "axis_throttle_1",   "label": "Throttle 1",           "kind": "axis",   "raw": "SDL axis 0" },
+    { "key": "axis_throttle_2",   "label": "Throttle 2",           "kind": "axis",   "raw": "SDL axis 1" },
+    { "key": "axis_throttle_3",   "label": "Throttle 3",           "kind": "axis",   "raw": "SDL axis 2" },
+    { "key": "axis_throttle_4",   "label": "Throttle 4",           "kind": "axis",   "raw": "SDL axis 3" },
+    { "key": "axis_throttle_5",   "label": "Throttle 5",           "kind": "axis",   "raw": "SDL axis 4" },
+    { "key": "axis_throttle_6",   "label": "Throttle 6",           "kind": "axis",   "raw": "SDL axis 5" },
+    { "key": "button_ap",         "label": "Autopilot ON/OFF",     "kind": "button", "raw": "SDL button 0" },
+    { "key": "button_hdg",        "label": "HDG",                  "kind": "button", "raw": "SDL button 1" },
+    { "key": "button_nav",        "label": "NAV",                  "kind": "button", "raw": "SDL button 2" },
+    { "key": "button_apr",        "label": "APR",                  "kind": "button", "raw": "SDL button 3" },
+    { "key": "button_rev",        "label": "REV",                  "kind": "button", "raw": "SDL button 4" },
+    { "key": "button_alt",        "label": "ALT",                  "kind": "button", "raw": "SDL button 5" },
+    { "key": "button_vs",         "label": "VS",                   "kind": "button", "raw": "SDL button 6" },
+    { "key": "button_ias",        "label": "IAS",                  "kind": "button", "raw": "SDL button 7" },
+    { "key": "button_dec_hdg",    "label": "HDG decrease",         "kind": "button", "raw": "SDL button 8" },
+    { "key": "button_inc_hdg",    "label": "HDG increase",         "kind": "button", "raw": "SDL button 9" },
+    { "key": "button_dec_alt",    "label": "ALT decrease",         "kind": "button", "raw": "SDL button 10" },
+    { "key": "button_inc_alt",    "label": "ALT increase",         "kind": "button", "raw": "SDL button 11" },
+    { "key": "button_dec_vs",     "label": "VS decrease",          "kind": "button", "raw": "SDL button 12" },
+    { "key": "button_inc_vs",     "label": "VS increase",          "kind": "button", "raw": "SDL button 13" },
+    { "key": "button_dec_ias",    "label": "IAS decrease",         "kind": "button", "raw": "SDL button 14" },
+    { "key": "button_inc_ias",    "label": "IAS increase",         "kind": "button", "raw": "SDL button 15" },
+    { "key": "button_flap_0",     "label": "Flaps 0",              "kind": "button", "raw": "SDL button 16" },
+    { "key": "button_flap_1",     "label": "Flaps position 1",     "kind": "button", "raw": "SDL button 17" },
+    { "key": "button_flap_2",     "label": "Flaps position 2",     "kind": "button", "raw": "SDL button 18" },
+    { "key": "button_flap_3",     "label": "Flaps position 3",     "kind": "button", "raw": "SDL button 19" },
+    { "key": "button_flap_4",     "label": "Flaps position 4",     "kind": "button", "raw": "SDL button 20" },
+    { "key": "button_flap_5",     "label": "Flaps position 5",     "kind": "button", "raw": "SDL button 21" },
+    { "key": "button_flap_6",     "label": "Flaps position 6",     "kind": "button", "raw": "SDL button 22" },
+    { "key": "button_flap_7",     "label": "Flaps position 7",     "kind": "button", "raw": "SDL button 23" },
+    { "key": "button_gear_up",    "label": "Gear UP",              "kind": "button", "raw": "SDL button 24" },
+    { "key": "button_gear_down",  "label": "Gear DOWN",            "kind": "button", "raw": "SDL button 25" },
+    { "key": "button_toga",       "label": "TO/GA",                "kind": "button", "raw": "SDL button 26" }
+  ],
+
+  "outputs": [],
+
+  "default_roles": {
+    "axis_throttle_1": "X-Plane: throttle engine 1",
+    "axis_throttle_2": "X-Plane: throttle engine 2"
+  }
+}
