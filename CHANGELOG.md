@@ -1,5 +1,14 @@
 # MuslimSim changelog
 
+## 2026-09-11 - Public collaboration preparation
+
+Documented the present need for development help and the intended one-time
+purchase model if a paid release is made later. Added contribution guidance,
+component licensing notices, and issue/PR templates. No blanket open-source
+license or copyright transfer was added; existing third-party terms remain.
+Verified documentation links and scanned existing Git history for credential
+patterns with no matches. Documentation only; device code and profiles unchanged.
+
 ## 2026-09-11 - Project-wide README
 
 Replaced the upload-focused introduction with a project overview covering

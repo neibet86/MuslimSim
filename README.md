@@ -2,6 +2,33 @@
 
 MuslimSim is a Windows desktop application for connecting physical cockpit hardware to flight simulators. It brings device management, control assignments, live input feedback, cockpit displays, and hardware practice into one workspace.
 
+## Project status and why this is public
+
+MuslimSim is a work in progress. **Right now, the priority is getting help to make the software better, more reliable, and easier to use—not selling it.**
+
+This repository is public so people can inspect the project, report problems, share hardware experience, suggest improvements, and discuss development work with the maintainer.
+
+**If MuslimSim becomes a paid product in the future, the intended model is a one-time purchase, not a subscription.** There is no price or release date announced. Publishing the source is not a promise that every future version will be free, nor a promise of lifetime updates or support.
+
+These plans are stated now so anyone considering helping can make an informed choice. Existing third-party license rights remain in place.
+
+## Help improve MuslimSim
+
+Help is especially welcome with:
+
+- Testing supported hardware on different cockpit setups.
+- Reproducing bugs and checking whether fixes hold across restarts and reconnects.
+- Improving setup instructions and identifying confusing interface behavior.
+- Reviewing performance, simulator compatibility, and device support.
+
+[Open an issue](https://github.com/neibet86/MuslimSim/issues/new/choose) with your findings or proposed work. Include the simulator, aircraft, hardware model, and steps to reproduce a problem. Remove credentials, personal details, and device serial numbers from logs before sharing them.
+
+**Before submitting code or other reusable contributions, read [CONTRIBUTING.md](CONTRIBUTING.md) and discuss the terms with the maintainer.** The project is not asking people to contribute under an unstated assumption that it will remain free forever.
+
+## Source visibility and licensing
+
+The source is public for transparency and collaboration discussions. A general open-source license has not been granted for otherwise unlicensed MuslimSim-authored material. See [LICENSING.md](LICENSING.md) for the current position and the included components that already have their own licenses.
+
 ## What you can do
 
 - **Manage your cockpit:** view connected supported devices and their status, with device-specific faceplates and controls.
