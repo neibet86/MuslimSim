@@ -52,6 +52,16 @@ it is added, without being named here.
 
 Any new output path must state, in its changelog entry, how it goes dark.
 
+### Owner exception — WINCTRL 3M PDC backlight (2026-09-11)
+
+The owner explicitly requested the 3M PDC backlight to stay on in both
+Practice and Live. For verified BB51/BB52 hardware, the active bridge owner
+keeps the captured panel backlight at 255 even when the simulator is offline,
+aircraft power is off/unknown, or Practice is idle. This narrow exception
+does not apply to 3N PDC hardware or any other device. Disabling/stopping the
+device and normal Studio shutdown still send capture-proven zero before
+closing its HID handle. Do not remove this exception as an aircraft-power bug.
+
 ### 0.2 Never disturb something that already works
 
 Fix the smallest part that is actually broken. A change must not alter the

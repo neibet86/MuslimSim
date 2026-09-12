@@ -217,7 +217,9 @@ class _FixedPDCBase:
         *,
         diagnose: bool = False,
         action_sink: Optional[Callable[[PDCEvent], None]] = None,
+        keep_3m_backlight_on: bool = False,
     ) -> None:
+        self.keep_3m_backlight_on = bool(keep_3m_backlight_on)
         self.diagnose = bool(diagnose)
         self._action_sink = action_sink
         self._active_pid: Optional[int] = None
@@ -334,6 +336,11 @@ class _FixedPDCBase:
         with self._state_lock:
             requested = self._backlight_requested
             sent = self._backlight_sent
+        # Owner-requested 3M exception: its backlight stays on while this
+        # owner runs in Live/Practice, including simulator-off and idle states.
+        # Only verified 3M PIDs qualify. Shutdown writes zero directly below.
+        if self.keep_3m_backlight_on and self.pid in (0xBB51, 0xBB52):
+            requested = 255
         if requested is None or (not force and requested == sent):
             return
         self._write_backlight(device, requested)

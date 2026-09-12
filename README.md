@@ -40,7 +40,23 @@ The source is public for transparency and collaboration discussions. A general o
 
 ## Simulator and hardware support
 
-The project includes X-Plane integration and a dedicated Microsoft Flight Simulator 2024 bridge. Available functions and display coverage depend on the simulator, aircraft, and device implementation.
+Current development status, based on the maintainer's cockpit testing:
+
+| Simulator / aircraft | Status |
+| --- | --- |
+| **X-Plane — Zibo 737** | Most devices work. This is the main working integration; further testing and improvements are welcome. |
+| **X-Plane — LevelUp 737** | Needs some tweaks and compatibility testing. |
+| **X-Plane — ToLiss Airbus** | Almost there. Some problems remain with the **MCDU32 (BB36)** and **PFP3N (BB35)** displays. Help reproducing and fixing them is welcome. |
+| **Microsoft Flight Simulator 2024** | Working simulator integration has **not been started yet**. Existing launcher/catalogue/configuration files are scaffolding, not a completed or validated integration. **Developer help is needed here.** |
+
+Coverage varies by device and aircraft; this is a work in progress, not a claim that every combination is finished.
+
+### MCDU and PFP page switching
+
+The physical keypad also controls the displayed cockpit page: **double-tap `/` to cycle pages**, and **triple-tap `.` to switch between the CDU/FMC and PFD view**. The page sequence depends on the aircraft and panel.
+
+Developers: read [MCDU/PFP page-switching setup](docs/MCDU_PAGE_SWITCHING.md) for the exact key indices, tap timing, page sequences, and hardware-ownership rules. Preserve these gestures and the existing mappings when working on display issues.
+
 
 Hardware support spans flight controls, throttles, rudder pedals, overhead and systems panels, flight-control panels, and cockpit displays. The project includes integrations for WINCTRL, Thrustmaster TCA, HOWALT, and other supported equipment.
 

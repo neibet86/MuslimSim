@@ -72,7 +72,8 @@ DEVICE_SPECS: Dict[str, Dict[str, Any]] = {
         "label": "ECAM32 BB70",
     },
     "moza_a210": {
-        "tokens": ("MOZA A210",),
+        "vid": 0x346E, "pid": 0x1001,
+        "tokens": ("MOZA A210", "MOZA AY210"),
         "label": "MOZA A210",
     },
     "moza_ab6": {

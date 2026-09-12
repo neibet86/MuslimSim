@@ -760,7 +760,7 @@ class MuslimSimStudio(tk.Tk):
         self.selection_note = tk.StringVar(value="Click a button, switch or knob on the visual panel to configure it.")
         ttk.Label(inspector, textvariable=self.selection_title, style="Panel.TLabel", wraplength=250, font=("Segoe UI Semibold", 11)).pack(anchor="w", pady=(16, 4))
         ttk.Label(inspector, textvariable=self.selection_source, style="PanelMuted.TLabel", wraplength=250).pack(anchor="w")
-        ttk.Label(inspector, textvariable=self.selection_note, style="PanelMuted.TLabel", wraplength=250, justify="left").pack(anchor="w", pady=(10, 16))
+        self.selection_note_label = ttk.Label(inspector, textvariable=self.selection_note, style="PanelMuted.TLabel", wraplength=250, justify="left")
         activation = tk.Frame(inspector, bg=PANEL, highlightbackground="#344865", highlightthickness=1)
         activation.pack(fill="x", pady=(0, 12))
         self.device_activation_hint = tk.StringVar(value="Device activation is loading…")
@@ -2087,7 +2087,7 @@ class MuslimSimStudio(tk.Tk):
             fcu_right = width - margin - side_width - 10
         canvas.create_rectangle(margin, panel_y, width - margin, panel_y + panel_h, fill="#111a2c", outline="#344664", width=2)
         canvas.create_text(margin + 22, panel_y + 20, text="AIRBUS-STYLE FCU / EFIS VISUAL STUDIO", anchor="w", fill=MUTED, font=("Segoe UI Semibold", 12))
-        canvas.create_text(width - margin - 22, panel_y + 20, text="Blue = mapped/default  •  gold = selected  •  teal = live press", anchor="e", fill=MUTED, font=("Segoe UI", 10))
+        canvas.create_text(width - margin - 22, panel_y + 20, state="hidden", text="Blue = mapped/default  •  gold = selected  •  teal = live press", anchor="e", fill=MUTED, font=("Segoe UI", 10))
 
         # The centre follows the FCU's physical grouping.  Each of the four
         # displays has a fixed compact column: no shared window, knob arc, or
@@ -2185,7 +2185,7 @@ class MuslimSimStudio(tk.Tk):
 
         if not self._detected.get("fcu_32_efis"):
             canvas.create_rectangle(margin, panel_y + panel_h - 48, width - margin, panel_y + panel_h, fill="#352735", outline="")
-            canvas.create_text(width / 2, panel_y + panel_h - 24, text="FCU/EFIS is not currently detected. The visual panel remains available for planning a profile.", fill="#ffd4ec", font=("Segoe UI", 10))
+            canvas.create_text(width / 2, panel_y + panel_h - 24, text="FCU/EFIS is not currently detected.", fill="#ffd4ec", font=("Segoe UI", 10))
 
     def _device_mirror(self, device_key: str) -> Dict[str, Any]:
         # MUSLIMSIM_PRACTICE_DATA_PLANE_V4
@@ -2944,7 +2944,7 @@ class MuslimSimStudio(tk.Tk):
             return x1, y1, x2, y2
 
         canvas.create_text(left, top - 27, text="PU OVERHEAD — 2D HARDWARE STUDIO", anchor="w", fill=INK, font=("Segoe UI Semibold", 13))
-        canvas.create_text(left + panel_width, top - 27, text="Blue = mapped/default  •  gold = selected  •  teal = live press", anchor="e", fill=MUTED, font=("Segoe UI", 9))
+        canvas.create_text(left + panel_width, top - 27, state="hidden", text="Blue = mapped/default  •  gold = selected  •  teal = live press", anchor="e", fill=MUTED, font=("Segoe UI", 9))
         canvas.create_round_rect(left, top, left + panel_width, top + panel_height, radius=max(9, 14 * scale), fill="#111317", outline="#5b6473", width=2)
 
         # The layout follows the owner's photo: framed black/metal panels
@@ -3113,7 +3113,7 @@ class MuslimSimStudio(tk.Tk):
         footer_y = top + panel_height + 17
         canvas.create_text(
             width / 2, footer_y,
-            text="BAT (SDL 43), altitude wheel directions, panel-brightness axis and both engine-start selectors are live/remappable.  The P7 annunciators mirror the confirmed 32-bit lamp mask and preserve their actual lens colours.",
+            state="hidden", text="BAT (SDL 43), altitude wheel directions, panel-brightness axis and both engine-start selectors are live/remappable.  The P7 annunciators mirror the confirmed 32-bit lamp mask and preserve their actual lens colours.",
             fill=MUTED, font=("Segoe UI", 8), width=max(420, int(panel_width - 20)),
         )
 
@@ -3158,7 +3158,7 @@ class MuslimSimStudio(tk.Tk):
             wake_test = False
         wake_state = "OUTPUT TEST ACTIVE" if wake_test else "OUTPUT TEST STANDBY"
         canvas.create_text(*pt(1102, 18), text=wake_state, anchor="e", fill="#5ff5c2" if wake_test else MUTED, font=("Segoe UI Semibold", max(8, int(10 * scale))))
-        canvas.create_text(*pt(16, 35), text="Click a control to map it. Physical movement is teal; selection is gold. Use the top Wake PU panel switch to test the real lamps, windows, gauge and backlight.", anchor="w", fill=MUTED, font=("Segoe UI", max(7, int(9 * scale))))
+        canvas.create_text(*pt(16, 35), state="hidden", text="Click a control to map it. Physical movement is teal; selection is gold. Use the top Wake PU panel switch to test the real lamps, windows, gauge and backlight.", anchor="w", fill=MUTED, font=("Segoe UI", max(7, int(9 * scale))))
 
         # P7 is one real 32-bit output field.  Keeping its lamps in an aligned
         # strip makes the output test readable and prevents them from being
@@ -3281,7 +3281,7 @@ class MuslimSimStudio(tk.Tk):
         position_current = int(round(self._pu_input_value("position_lights", 0)))
         self._draw_pu_detent(canvas, *pt(950, 520), "POSITION", "position_lights", ("STEADY", "OFF", "STROBE"), max(0, min(2, position_values.index(position_current) if position_current in position_values else 1)), scale=scale)
 
-        canvas.create_text(*pt(560, 604), text="All controls shown have a verified PU source. Output test never drives the engine-start solenoid; P7 lamps are outputs only, not guessed switch feedback.", fill=MUTED, font=("Segoe UI", max(7, int(8 * scale))), width=int(1040 * scale))
+        canvas.create_text(*pt(560, 604), state="hidden", text="All controls shown have a verified PU source. Output test never drives the engine-start solenoid; P7 lamps are outputs only, not guessed switch feedback.", fill=MUTED, font=("Segoe UI", max(7, int(8 * scale))), width=int(1040 * scale))
 
     def _draw_pu_overhead(self, canvas: tk.Canvas, width: int, height: int) -> None:
         """Draw the PU as a spaced operating panel rather than a packed grid.
@@ -3320,7 +3320,7 @@ class MuslimSimStudio(tk.Tk):
         except AttributeError:  # Headless faceplate test harness.
             wake_test = False
         canvas.create_text(*pt(1222, 19), text="SAFE OUTPUT TEST ACTIVE" if wake_test else "SAFE OUTPUT TEST STANDBY", anchor="e", fill="#5ff5c2" if wake_test else MUTED, font=("Segoe UI Semibold", max(7, int(9 * scale))))
-        canvas.create_text(*pt(16, 38), text="Click a control to select/map it; Practice also operates it. Teal = live physical input; gold = selected.", anchor="w", fill=MUTED, font=("Segoe UI", max(6, int(8 * scale))))
+        canvas.create_text(*pt(16, 38), state="hidden", text="Click a control to select/map it; Practice also operates it. Teal = live physical input; gold = selected.", anchor="w", fill=MUTED, font=("Segoe UI", max(6, int(8 * scale))))
 
         card(10, 54, 200, 145, "P7 ANNUNCIATORS — OUTPUTS")
         card(222, 54, 180, 145, "IRS / NAV")
@@ -3427,7 +3427,7 @@ class MuslimSimStudio(tk.Tk):
         position = int(round(self._pu_input_value("position_lights", 0)))
         self._draw_pu_detent(canvas, *pt(935, 505), "POSITION", "position_lights", ("STEADY", "OFF", "STROBE"), position_values.index(position) if position in position_values else 1, scale=scale)
 
-        canvas.create_text(*pt(620, 614), text="Practice APU START animates the confirmed EGT output. Engine START GRD uses only the documented short P1 return-to-OFF pulse — no force, endpoint, or motor setting is invented.", fill=MUTED, font=("Segoe UI", max(6, int(8 * scale))), width=max(500, int(1110 * scale)))
+        canvas.create_text(*pt(620, 614), state="hidden", text="Practice APU START animates the confirmed EGT output. Engine START GRD uses only the documented short P1 return-to-OFF pulse — no force, endpoint, or motor setting is invented.", fill=MUTED, font=("Segoe UI", max(6, int(8 * scale))), width=max(500, int(1110 * scale)))
 
     def _draw_pap3(self, canvas: tk.Canvas, width: int, height: int) -> None:
         mirror = self._device_mirror("pap3_mag")
@@ -3435,7 +3435,7 @@ class MuslimSimStudio(tk.Tk):
         panel_left, panel_right = 32, width - 32
         canvas.create_round_rect(panel_left, 45, panel_right, height - 30, radius=16, fill="#111a2c", outline="#445673", width=2)
         canvas.create_text(panel_left + 22, 68, text="PAP3 MAG — LIVE MCP TWIN", anchor="w", fill=INK, font=("Segoe UI Semibold", 13))
-        canvas.create_text(panel_right - 22, 68, text="Six MCP windows • original Zibo roles are active until remapped", anchor="e", fill=MUTED, font=("Segoe UI", 9))
+        canvas.create_text(panel_right - 22, 68, state="hidden", text="Six MCP windows • original Zibo roles are active until remapped", anchor="e", fill=MUTED, font=("Segoe UI", 9))
 
         fallback = self._pap3_values
         speed = self._number(values, "speed", fallback["speed"])
@@ -3487,7 +3487,7 @@ class MuslimSimStudio(tk.Tk):
             active = bool(round(self._number(values, value_key, 0.0)))
             self._draw_switch(canvas, panel_left + 115 + index * ((panel_right - panel_left - 230) / 4), 430, label, key, active)
 
-        canvas.create_text(width / 2, height - 55, text="Touch any physical button, dial direction or switch: it lights here immediately. Click it once to inspect its original role or replace that role in this profile.", fill=MUTED, font=("Segoe UI", 9))
+        canvas.create_text(width / 2, height - 55, state="hidden", text="Touch any physical button, dial direction or switch: it lights here immediately. Click it once to inspect its original role or replace that role in this profile.", fill=MUTED, font=("Segoe UI", 9))
 
     def _draw_agp(self, canvas: tk.Canvas, width: int, height: int) -> None:
         """Draw a full-width AGP faceplate from the verified contact map."""
@@ -3672,7 +3672,7 @@ class MuslimSimStudio(tk.Tk):
             text=f"WINCTRL 3N PDC / AIRBUS EFIS — {side.upper()} — CAPTURED 2D PANEL",
             anchor="w", fill=INK, font=("Segoe UI Semibold", 13),
         )
-        canvas.create_text(right - 22, top + 25, text="Blue = mapped/default  •  gold = selected  •  teal = live press", anchor="e", fill=MUTED, font=("Segoe UI", 9))
+        canvas.create_text(right - 22, top + 25, state="hidden", text="Blue = mapped/default  •  gold = selected  •  teal = live press", anchor="e", fill=MUTED, font=("Segoe UI", 9))
 
         # BB62's output packet framing is documented but no display selector
         # meaning is captured.  It remains a clearly-labelled blank window,
@@ -3723,7 +3723,7 @@ class MuslimSimStudio(tk.Tk):
                 self._draw_button(canvas, base_x - 72 + index * 72, lower_top + 72, label, f"vor_adf_{receiver}_{suffix}", width=60)
         self._draw_rotary(canvas, width * .76, lower_top + 55, "MINS", "CCW / CW", dec="mins_knob_ccw", inc="mins_knob_cw", width=96)
         self._draw_rotary(canvas, width * .89, lower_top + 55, "BARO", "CCW / CW", dec="baro_knob_ccw", inc="baro_knob_cw", width=96)
-        canvas.create_text(width / 2, bottom - 12, text=f"{side} virtual view • every blue control is a captured input and can be remapped. The blank mirror is intentional until the real display/LED selectors are learned.", fill=MUTED, font=("Segoe UI", 9))
+        canvas.create_text(width / 2, bottom - 12, state="hidden", text=f"{side} virtual view • every blue control is a captured input and can be remapped. The blank mirror is intentional until the real display/LED selectors are learned.", fill=MUTED, font=("Segoe UI", 9))
 
     def _draw_winctrl_linear_axis(
         self, canvas: tk.Canvas, x1: float, x2: float, y: float, label: str,
@@ -3960,7 +3960,7 @@ class MuslimSimStudio(tk.Tk):
                     fill="#b9f7df", font=("Segoe UI Semibold", 8),
                 )
         else:
-            canvas.create_text(right - 24, top + 24, text="Top sliders show the physical position • blue items are remappable", anchor="e", fill=MUTED, font=("Segoe UI", 9))
+            canvas.create_text(right - 24, top + 24, state="hidden", text="Top sliders show the physical position • blue items are remappable", anchor="e", fill=MUTED, font=("Segoe UI", 9))
 
         thrust_left = left + 26
         thrust_right = right - 26
@@ -4174,7 +4174,7 @@ class MuslimSimStudio(tk.Tk):
         canvas.create_text(parking_x, parking_top + 82, text="A/T DISCONNECT", fill=MUTED, font=("Segoe UI Semibold", 8))
         self._draw_button(canvas, parking_x - 46, parking_top + 111, "LEFT", "at_disconnect_left", width=66)
         self._draw_button(canvas, parking_x + 46, parking_top + 111, "RIGHT", "at_disconnect_right", width=66)
-        canvas.create_text(width / 2, bottom - 10, text="LIVE HARDWARE OVERRIDES STUDIO PRACTICE CONTROLS", fill=MUTED, font=("Segoe UI Semibold", 9))
+        canvas.create_text(width / 2, bottom - 10, state="hidden", text="LIVE HARDWARE OVERRIDES STUDIO PRACTICE CONTROLS", fill=MUTED, font=("Segoe UI Semibold", 9))
 
     def _draw_winctrl_pedals(self, canvas: tk.Canvas, width: int, height: int) -> None:
         """Live rudder and independently animated toe-brake faceplate."""
@@ -4183,7 +4183,7 @@ class MuslimSimStudio(tk.Tk):
         top, bottom = 34, height - 28
         canvas.create_round_rect(left, top, right, bottom, radius=18, fill="#1a2639", outline="#52647d", width=2)
         canvas.create_text(left + 24, top + 25, text="WINCTRL ORION RUDDER PEDALS — LIVE 2D", anchor="w", fill=INK, font=("Segoe UI Semibold", 14))
-        canvas.create_text(right - 24, top + 25, text="Rudder and each toe brake are separate, remappable axes", anchor="e", fill=MUTED, font=("Segoe UI", 9))
+        canvas.create_text(right - 24, top + 25, state="hidden", text="Rudder and each toe brake are separate, remappable axes", anchor="e", fill=MUTED, font=("Segoe UI", 9))
 
         rudder = self._pedal_axis_value("rudder")
         left_brake = self._pedal_axis_value("left_toe_brake")
@@ -4225,14 +4225,14 @@ class MuslimSimStudio(tk.Tk):
                 gx = x - 38 + groove * 26
                 grooves.append(canvas.create_line(gx, plate_top + 7, gx - 8, plate_top + 76, fill="#8493a8", width=3))
             pressure = canvas.create_text(x, bottom - 82, text=f"{brake * 100:05.1f}%", fill="#b9f7df", font=("Consolas", 13, "bold"))
-            note = canvas.create_text(x, bottom - 59, text="press plate forward", fill=MUTED, font=("Segoe UI", 8))
+            note = canvas.create_text(x, bottom - 59, state="hidden", text="press plate forward", fill=MUTED, font=("Segoe UI", 8))
             self._tag(canvas, frame, key)
             self._tag(canvas, plate, key)
             self._tag(canvas, pressure, key)
             self._tag(canvas, note, key)
             for groove in grooves:
                 self._tag(canvas, groove, key)
-        canvas.create_text(width / 2, bottom - 22, text="Click a blue axis in Practice mode to move it in safe steps. Real pedal movement always takes priority and is shown immediately.", fill=MUTED, font=("Segoe UI", 9))
+        canvas.create_text(width / 2, bottom - 22, state="hidden", text="Click a blue axis in Practice mode to move it in safe steps. Real pedal movement always takes priority and is shown immediately.", fill=MUTED, font=("Segoe UI", 9))
 
     def _ecam_face_label(self, key: str, native_label: str) -> str:
         """Keep the Airbus legend until this profile deliberately remaps it."""
@@ -4281,7 +4281,7 @@ class MuslimSimStudio(tk.Tk):
         canvas.create_text(left, top - 29, text="WINCTRL 32 ECAM — A320 CONTROL PANEL", anchor="w", fill=INK, font=("Segoe UI Semibold", 15))
         canvas.create_text(
             right, top - 29,
-            text="A320 labels stay native until you save a remap",
+            state="hidden", text="A320 labels stay native until you save a remap",
             anchor="e", fill=MUTED, font=("Segoe UI", 9),
         )
         canvas.create_round_rect(left, top, right, bottom, radius=20, fill="#48515d", outline="#9eaab8", width=3)
@@ -4363,7 +4363,7 @@ class MuslimSimStudio(tk.Tk):
         # click target.  The colour legend moves into the panel's lower trim.
         canvas.create_text(
             width / 2, bottom - 27,
-            text="Amber = selected / physical lamp  •  teal = live physical press  •  blue = measured and ready to map  •  CAPTURE = not assigned yet",
+            state="hidden", text="Amber = selected / physical lamp  •  teal = live physical press  •  blue = measured and ready to map  •  CAPTURE = not assigned yet",
             fill=MUTED, font=("Segoe UI", 8), tags=("ecam-state-legend",),
         )
         guidance_top = bottom + 7
@@ -4376,13 +4376,13 @@ class MuslimSimStudio(tk.Tk):
         captured_count = sum(1 for key, _label, _role in ECAM32_A320_CONTROLS if self._learned_source(key))
         canvas.create_text(
             (bay_left + bay_right) / 2, guidance_top + 18,
-            text=f"MEASURED BUTTON NAMES: {captured_count} / {len(ECAM32_A320_CONTROLS)}  •  RUN CAPTURE_ECAM32_BUTTON_NAMES.cmd WITH STUDIO CLOSED TO RECORD ALL NAMES.",
+            text=f"MEASURED BUTTON NAMES: {captured_count} / {len(ECAM32_A320_CONTROLS)}",
             fill="#eef3fb", font=("Segoe UI Semibold", 8, "bold"),
             tags=("ecam-measured-status",),
         )
         canvas.create_text(
             (bay_left + bay_right) / 2, guidance_top + 37,
-            text="No packet-order guess is used. Only the exact physical button you assigned can activate each ECAM name.",
+            state="hidden", text="No packet-order guess is used. Only the exact physical button you assigned can activate each ECAM name.",
             fill=MUTED, font=("Segoe UI", 8), tags=("ecam-measured-status",),
         )
 
@@ -4997,7 +4997,7 @@ class MuslimSimStudio(tk.Tk):
         mode_knob(430,450,map_mode)
         range_left(690,450,map_range) if detented_range else range_right(690,450)
         for i,(key,label) in enumerate((("wxr","WXR"),("sta","STA"),("wpt","WPT"),("arpt","ARPT"),("data","DATA"),("pos","POS"),("terr","TERR"))): push(115+i*148,630,label,key,112,56)
-        canvas.create_text(X(560),Y(680),text="Select a control to assign it. Physical feedback works without the simulator.",fill=MUTED,font=F(8))
+        canvas.create_text(X(560),Y(680),state="hidden", text="Select a control to assign it. Physical feedback works without the simulator.",fill=MUTED,font=F(8))
 
     def _draw_fmc_keypad(self, canvas: tk.Canvas, width: int, height: int) -> None:
         device = self._selected_device
@@ -5539,7 +5539,7 @@ class MuslimSimStudio(tk.Tk):
 
         canvas.create_round_rect(left + 18, top + 5, right - 18, bottom - 8, radius=18, fill="#111d31", outline="#516783", width=2)
         canvas.create_text((left + right) / 2, top + 24, text="DETACHABLE YOKE — LIVE HID SURFACE", fill="#f2d7a1", font=("Segoe UI", 9, "bold"))
-        canvas.create_text((left + right) / 2, top + 41, text="The yoke and base remain one A210 device when fitted or removed.", fill=MUTED, font=("Segoe UI", 7), width=right - left - 62)
+        canvas.create_text((left + right) / 2, top + 41, state="hidden", text="The yoke and base remain one A210 device when fitted or removed.", fill=MUTED, font=("Segoe UI", 7), width=right - left - 62)
 
         # Native X-Plane axis assignment (--moza-yoke) auto-detects which
         # joystick-axis slot is roll/pitch; this opens the correction dialog
@@ -5708,7 +5708,7 @@ class MuslimSimStudio(tk.Tk):
 
         canvas.create_round_rect(left + 18, top + 5, right - 18, bottom - 8, radius=18, fill="#111d31", outline="#516783", width=2)
         canvas.create_text((left + right) / 2, top + 24, text="MAX3 GRIP — LIVE HID", fill="#f2d7a1", font=("Segoe UI", 9, "bold"))
-        canvas.create_text((left + right) / 2, top + 42, text="Rendered from your MAX3 layout.  Its contacts arrive on the base it is mounted on; no separate MAX3 USB protocol is assumed.", fill=MUTED, font=("Segoe UI", 7), width=right - left - 64)
+        canvas.create_text((left + right) / 2, top + 42, state="hidden", text="Rendered from your MAX3 layout.  Its contacts arrive on the base it is mounted on; no separate MAX3 USB protocol is assumed.", fill=MUTED, font=("Segoe UI", 7), width=right - left - 64)
         cx = (left + right) / 2
         canvas.create_round_rect(cx - 88, top + 100, cx + 88, bottom - 56, radius=36, fill="#1b2d45", outline="#647b99", width=3)
         canvas.create_oval(cx - 39, top + 119, cx + 39, top + 197, fill="#142237", outline="#8298b5", width=3)
@@ -5716,7 +5716,7 @@ class MuslimSimStudio(tk.Tk):
         canvas.create_line(cx + 35, top + 199, cx + 82, bottom - 104, fill="#536a87", width=14)
         self._draw_moza_push(canvas, cx - 94, top + 277, "TRIGGER", 1, width=62, height=32, device=device)
         self._draw_moza_push(canvas, cx + 94, top + 145, "TOP", 10, width=54, height=32, device=device)
-        canvas.create_text(cx, bottom - 34, text="Only B001 and B010 are placed from this reference.  Other MAX3 contacts appear live when you press them.", fill="#c3d1e4", font=("Segoe UI", 7), width=right - left - 76)
+        canvas.create_text(cx, bottom - 34, state="hidden", text="Only B001 and B010 are placed from this reference.  Other MAX3 contacts appear live when you press them.", fill="#c3d1e4", font=("Segoe UI", 7), width=right - left - 76)
 
     def _draw_moza_ab6_layout(self, canvas: tk.Canvas, left: float, top: float, right: float, bottom: float, axes: Dict[str, float]) -> None:
         """Draw the AB6 from its own capture-proven live HID report.
@@ -5730,7 +5730,7 @@ class MuslimSimStudio(tk.Tk):
 
         canvas.create_round_rect(left + 18, top + 5, right - 18, bottom - 8, radius=18, fill="#111d31", outline="#516783", width=2)
         canvas.create_text((left + right) / 2, top + 24, text="AB6 BASE — LIVE HID", fill="#f2d7a1", font=("Segoe UI", 9, "bold"))
-        canvas.create_text((left + right) / 2, top + 42, text="Captured from the base: report 01, eight axes, hat and 128 contacts.  The base prints no button names, so assign functions to the numbered contacts here.", fill=MUTED, font=("Segoe UI", 7), width=right - left - 64)
+        canvas.create_text((left + right) / 2, top + 42, state="hidden", text="Captured from the base: report 01, eight axes, hat and 128 contacts.  The base prints no button names, so assign functions to the numbered contacts here.", fill=MUTED, font=("Segoe UI", 7), width=right - left - 64)
         cx = (left + right) / 2
         console_top, console_bottom = top + 72, bottom - 56
         canvas.create_round_rect(cx - 116, console_top, cx + 116, console_bottom, radius=24, fill="#172941", outline="#607895", width=3)
@@ -5768,7 +5768,7 @@ class MuslimSimStudio(tk.Tk):
                 text=f"{fraction * 100:.0f}%", fill="#a9bbd3",
                 font=("Consolas", 6, "bold"),
             )
-        canvas.create_text(cx, bottom - 30, text="Z, Rx, Ry and Rz are declared by the report but stayed idle through a full-travel exercise.  No force-feedback output protocol exists, so nothing is ever sent to this base.", fill="#c3d1e4", font=("Segoe UI", 7), width=right - left - 76)
+        canvas.create_text(cx, bottom - 30, state="hidden", text="Z, Rx, Ry and Rz are declared by the report but stayed idle through a full-travel exercise.  No force-feedback output protocol exists, so nothing is ever sent to this base.", fill="#c3d1e4", font=("Segoe UI", 7), width=right - left - 76)
 
     def _draw_moza_hat(self, canvas: tk.Canvas, x: float, y: float, device: str = "moza_a210") -> None:
         """Render the capture-proven 8-way HID hat with a visible detent."""
@@ -5897,7 +5897,7 @@ class MuslimSimStudio(tk.Tk):
         canvas.create_text(left + 22, top + 20, text=title, anchor="w", fill=INK, font=("Segoe UI Semibold", 12))
         canvas.create_text(
             right - 22, top + 20,
-            text=("LIVE HID" if live_axes else "REFERENCE / PRACTICE") + " • profile settings saved locally",
+            text=("LIVE HID" if live_axes else "REFERENCE / PRACTICE"),
             anchor="e", fill="#b9f7df" if live_axes else MUTED,
             font=("Segoe UI", 7, "bold"), width=270, justify="right",
         )
@@ -6011,8 +6011,8 @@ class MuslimSimStudio(tk.Tk):
         for index, (label, key) in enumerate(effect_fields):
             row, column = divmod(index, 3)
             self._draw_moza_setting(canvas, settings_left + 18 + column * (setting_width + 9), effects_top + 12 + row * 44, setting_width, label, key, bool(values.get(key, False)))
-        canvas.create_text((settings_left + settings_right) / 2, bottom - 52, text="Preset values are saved to this MuslimSim profile. No Moza output protocol was present in these files, so Studio does not send unknown force-feedback commands.", fill=MUTED, font=("Segoe UI", 7), width=settings_right - settings_left - 40)
-        canvas.create_text(width / 2, bottom - 13, text="Blue = profile setting • teal = selected preset • the A210 yoke stays one device when removed or refitted", fill=MUTED, font=("Segoe UI", 8))
+        canvas.create_text((settings_left + settings_right) / 2, bottom - 52, state="hidden", text="Preset values are saved to this MuslimSim profile. No Moza output protocol was present in these files, so Studio does not send unknown force-feedback commands.", fill=MUTED, font=("Segoe UI", 7), width=settings_right - settings_left - 40)
+        canvas.create_text(width / 2, bottom - 13, state="hidden", text="Blue = profile setting • teal = selected preset • the A210 yoke stays one device when removed or refitted", fill=MUTED, font=("Segoe UI", 8))
 
     def _draw_moza_ffb_panel(
         self, canvas: tk.Canvas, settings_left: float, settings_right: float,
@@ -6036,7 +6036,7 @@ class MuslimSimStudio(tk.Tk):
         canvas.create_text(settings_left + 18, main_top + 19, text="FORCE FEEDBACK — PHYSICS MODEL", anchor="w", fill="#f2d7a1", font=("Segoe UI Semibold", 10, "bold"))
         canvas.create_text(
             settings_right - 18, main_top + 19,
-            text=("LIVE — writing to hardware" if engine_running else "Start the bridge with --moza-ffb to make these real"),
+            text=(("LIVE — writing to hardware" if engine_running else "FFB INACTIVE")),
             anchor="e", fill="#b9f7df" if engine_running else MUTED, font=("Segoe UI", 7, "bold"),
         )
 
@@ -6076,11 +6076,11 @@ class MuslimSimStudio(tk.Tk):
         else:
             canvas.create_text(
                 settings_left + 18, rows_top, anchor="w",
-                text="No effects reporting yet - select a profile above and start the bridge with --moza-ffb.",
+                text="No effects reporting yet.",
                 fill=MUTED, font=("Segoe UI", 7), width=settings_right - settings_left - 36,
             )
 
-        canvas.create_text(width / 2, bottom - 13, text="Click − / + on any effect above to scale how strong it feels (0-200%) - a live override, same as the physics rows, never written to the .mslm file itself.", fill=MUTED, font=("Segoe UI", 8), width=width - 80)
+        canvas.create_text(width / 2, bottom - 13, state="hidden", text="Click − / + on any effect above to scale how strong it feels (0-200%) - a live override, same as the physics rows, never written to the .mslm file itself.", fill=MUTED, font=("Segoe UI", 8), width=width - 80)
 
     def _draw_moza_ffb_preset_bar(
         self, canvas: tk.Canvas, x1: float, y1: float, x2: float, y2: float,
@@ -6229,7 +6229,7 @@ class MuslimSimStudio(tk.Tk):
         )
         canvas.create_text(
             44, 68,
-            text=(
+            state="hidden", text=(
                 "One physical unit  \u2022  the 1&2 / 3&4 selector is read when USB "
                 "enumerates  \u2022  click any control to map it"
             ),
@@ -6548,9 +6548,7 @@ class MuslimSimStudio(tk.Tk):
         canvas.create_text(
             38, 60,
             text=(
-                "AIRBRAKE  •  THRUST 1  •  THRUST 2  •  THRUST 3  •  THRUST 4  •  FLAPS"
-                if full_set else
-                "One quadrant: airbrake, all-engine thrust, and flaps. The bank is read at USB enumeration."
+                ("AIRBRAKE  •  THRUST 1  •  THRUST 2  •  THRUST 3  •  THRUST 4  •  FLAPS" if full_set else "AIRBRAKE  •  THRUST  •  FLAPS")
             ),
             anchor="w", fill=muted, font=("Segoe UI", 8),
         )
@@ -6774,10 +6772,10 @@ class MuslimSimStudio(tk.Tk):
             return
         canvas.create_text(width / 2, 95, text=title, fill=INK, font=("Segoe UI Semibold", 18))
         notes = spec.get("notes", "")
-        canvas.create_text(width / 2, 128, text=notes or "A visual mapping surface is ready when a driver/control map is captured.", fill=MUTED, font=("Segoe UI", 10), width=width - 100)
+        canvas.create_text(width / 2, 128, state="hidden", text=notes or "A visual mapping surface is ready when a driver/control map is captured.", fill=MUTED, font=("Segoe UI", 10), width=width - 100)
         controls = [item for item in spec.get("controls", []) if item.get("status") == "implemented" and item.get("direction") in {"input", "bidirectional"}]
         if not controls:
-            canvas.create_text(width / 2, height / 2, text="No verified control map is available for this device yet.\nIt is detected, but MuslimSim will not invent its behavior.", fill=WARN, font=("Segoe UI", 13), justify="center")
+            canvas.create_text(width / 2, height / 2, text="No verified control map is available for this device yet.", fill=WARN, font=("Segoe UI", 13), justify="center")
             return
         shown = controls
         columns = 6
@@ -6798,7 +6796,7 @@ class MuslimSimStudio(tk.Tk):
                 continue
             text = canvas.create_text(x, y + 38, text=label, fill=INK, font=("Segoe UI", 8), width=100)
             self._tag(canvas, text, key)
-        canvas.create_text(width / 2, height - 34, text="Every captured control is selectable here. The original bridge function stays active until you save an override in the current profile.", fill=MUTED, font=("Segoe UI", 9))
+        canvas.create_text(width / 2, height - 34, state="hidden", text="Every captured control is selectable here. The original bridge function stays active until you save an override in the current profile.", fill=MUTED, font=("Segoe UI", 9))
 
     # ----- selection, learning, binding ---------------------------------------
 
@@ -7247,6 +7245,14 @@ class MuslimSimStudio(tk.Tk):
         self._draw_faceplate()
 
     def _show_selection(self) -> None:
+        # Only AGP retains the small explanatory control-setup caption.
+        note_label = getattr(self, "selection_note_label", None)
+        if note_label is not None:
+            if self._selected_device == "agp_bb80":
+                note_label.pack(anchor="w", pady=(10, 16), before=self.device_activation_button.master)
+            else:
+                note_label.pack_forget()
+
         self._refresh_spare_controls()
         if not self._selected_visual:
             self.capture_button.state(("disabled",))
@@ -7764,15 +7770,16 @@ class MuslimSimStudio(tk.Tk):
         dialog.columnconfigure(0, weight=1)
         dialog.rowconfigure(3, weight=1)
         ttk.Label(dialog, text=f"{label}", style="Panel.TLabel", font=("Segoe UI Semibold", 14)).grid(row=0, column=0, padx=18, pady=(16, 2), sticky="w")
-        ttk.Label(
-            dialog,
-            text=(
-                f"Physical {type_label}  •  choose its MSFS 2024 function below. Saved MSFS mappings stay separate from X-Plane."
-                if is_msfs else
-                f"Physical {type_label}  •  choose its new {xplane_title} function below. The original device role stays active until you save."
-            ),
-            style="PanelMuted.TLabel",
-        ).grid(row=1, column=0, padx=18, pady=(0, 12), sticky="w")
+        if self._selected_device == "agp_bb80":
+            ttk.Label(
+                dialog,
+                text=(
+                    f"Physical {type_label}  •  choose its MSFS 2024 function below. Saved MSFS mappings stay separate from X-Plane."
+                    if is_msfs else
+                    f"Physical {type_label}  •  choose its new {xplane_title} function below. The original device role stays active until you save."
+                ),
+                style="PanelMuted.TLabel",
+            ).grid(row=1, column=0, padx=18, pady=(0, 12), sticky="w")
 
         tools = ttk.Frame(dialog, style="Panel.TFrame")
         tools.grid(row=2, column=0, padx=18, pady=(0, 8), sticky="ew")
@@ -7837,7 +7844,8 @@ class MuslimSimStudio(tk.Tk):
                 trigger_choice.set(detents[0])
             ttk.Label(selector_frame, text="Activate at", style="Panel.TLabel").grid(row=0, column=0, padx=(0, 8), pady=4)
             ttk.Combobox(selector_frame, textvariable=trigger_choice, values=detents, state="readonly", width=13).grid(row=0, column=1, pady=4, sticky="w")
-            ttk.Label(selector_frame, text="Only this physical selector position sends the chosen function.", style="PanelMuted.TLabel").grid(row=0, column=2, padx=(12, 0), pady=4, sticky="w")
+            if self._selected_device == "agp_bb80":
+                ttk.Label(selector_frame, text="Only this physical selector position sends the chosen function.", style="PanelMuted.TLabel").grid(row=0, column=2, padx=(12, 0), pady=4, sticky="w")
 
         spring_return = tk.BooleanVar(value=str(current.get("mechanical") or "") == "spring_return")
         if is_safe_spring_selector:
@@ -7847,11 +7855,12 @@ class MuslimSimStudio(tk.Tk):
                 variable=spring_return,
                 command=lambda: trigger_choice.set("GRD") if spring_return.get() else None,
             ).grid(row=1, column=0, columnspan=3, pady=(2, 4), sticky="w")
-            ttk.Label(
-                selector_frame,
-                text="This uses only the existing PU start-selector return pulse; no motor strength, direction, or endpoint is exposed.",
-                style="PanelMuted.TLabel",
-            ).grid(row=2, column=0, columnspan=4, pady=(0, 3), sticky="w")
+            if self._selected_device == "agp_bb80":
+                ttk.Label(
+                    selector_frame,
+                    text="This uses only the existing PU start-selector return pulse; no motor strength, direction, or endpoint is exposed.",
+                    style="PanelMuted.TLabel",
+                ).grid(row=2, column=0, columnspan=4, pady=(0, 3), sticky="w")
 
         if is_msfs:
             # Only the selected airframe's catalogue family. A PMDG command can
@@ -8205,11 +8214,12 @@ class MuslimSimStudio(tk.Tk):
             dialog, text="Save the current physics settings as a new preset",
             style="Panel.TLabel", font=("Segoe UI Semibold", 11),
         ).pack(padx=18, pady=(16, 4), anchor="w")
-        ttk.Label(
-            dialog,
-            text="Every Spring/Damper/Inertia/... value currently shown is frozen into this preset. Effects (rumble/spring curves) start empty and can be hand-authored later.",
-            style="PanelMuted.TLabel", wraplength=380, justify="left",
-        ).pack(padx=18, pady=(0, 10), anchor="w")
+        if self._selected_device == "agp_bb80":
+            ttk.Label(
+                dialog,
+                text="Every Spring/Damper/Inertia/... value currently shown is frozen into this preset. Effects (rumble/spring curves) start empty and can be hand-authored later.",
+                style="PanelMuted.TLabel", wraplength=380, justify="left",
+            ).pack(padx=18, pady=(0, 10), anchor="w")
 
         name_var = tk.StringVar(value=self._moza_ffb_current_aircraft_display_name())
         entry_row = ttk.Frame(dialog, style="Panel.TFrame")
@@ -8270,16 +8280,17 @@ class MuslimSimStudio(tk.Tk):
             dialog, text="MOZA A210 native axis assignment", style="Panel.TLabel",
             font=("Segoe UI Semibold", 13),
         ).pack(padx=18, pady=(16, 4), anchor="w")
-        ttk.Label(
-            dialog,
-            text=(
-                "The bridge watches for movement to auto-detect which X-Plane "
-                "joystick axis slot is roll and which is pitch - the only way "
-                "Zibo actually respects a physical yoke. If detection gets "
-                "stuck or picks the wrong slot, correct it below."
-            ),
-            style="PanelMuted.TLabel", wraplength=510, justify="left",
-        ).pack(padx=18, pady=(0, 12), anchor="w")
+        if self._selected_device == "agp_bb80":
+            ttk.Label(
+                dialog,
+                text=(
+                    "The bridge watches for movement to auto-detect which X-Plane "
+                    "joystick axis slot is roll and which is pitch - the only way "
+                    "Zibo actually respects a physical yoke. If detection gets "
+                    "stuck or picks the wrong slot, correct it below."
+                ),
+                style="PanelMuted.TLabel", wraplength=510, justify="left",
+            ).pack(padx=18, pady=(0, 12), anchor="w")
 
         rows = ttk.Frame(dialog, style="Panel.TFrame")
         rows.pack(padx=18, pady=(0, 8), fill="x")

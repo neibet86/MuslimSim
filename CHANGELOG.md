@@ -1,5 +1,58 @@
 # MuslimSim changelog
 
+## 2026-09-11 - 3M PDC backlight and public compatibility status
+
+Validation: mandatory regression suite, existing fixed-PDC packet checks and
+new 3M active-backlight/shutdown checks PASS. Documentation links verified.
+Live backlight confirmation is pending after Studio reload.
+
+Owner-requested exception: verified 3M PDC BB51/BB52 backlights stay at 255
+while the device owner runs in Practice or Live, including simulator-off,
+unpowered aircraft and idle Practice. An opt-in driver parameter preserves
+all other callers; 3N panels retain their existing requested brightness.
+The same HID owner sends captured packets, suppresses unchanged writes, and
+still writes zero on normal stop/shutdown. Inputs and assignments are unchanged.
+
+README now records the owner's Zibo/LevelUp/ToLiss status and identifies MSFS24
+as unstarted working integration needing help, despite existing scaffolding.
+Added developer notes for the existing MCDU/PFP keypad page gestures.
+
+
+## 2026-09-11 - Hide small page instructions except AGP
+
+Validation: mandatory known-regression suite and real Tk faceplate drawing
+checks PASS. Every AGP method is identical to the pre-change source.
+
+At the owner's request, hid explanatory faceplate captions and control-setup
+instructions across Studio except WINCTRL 32 AGP Metal. AGP instructions and
+its quick-reference guide remain unchanged. Retained control labels, live
+values, connection/error statuses, input tags and click targets. No device
+reader, saved assignment, simulator route or output-power behavior changed.
+
+
+## 2026-09-11 - Independent controller inputs and MOZA presence
+
+MOZA A210 presence now recognizes verified USB 346E:1001 and both A210/AY210
+product names. The lifecycle checker previously contradicted the connected HID
+reader, making Studio alternately show and hide the device.
+
+The shared SDL owner now skips only PU-specific reads and baselines when the
+overhead is absent. WINCTRL throttle, pedals and TCA Boeing inputs continue;
+no second reader, fabricated PU positions, output path or saved mapping changes.
+The existing throttle pickup gate, TCA banks and stationary startup rules remain.
+No new output behavior; existing power-off and shutdown protections are unchanged.
+
+Validation complete: mandatory known-regression suite PASS. All 20 controller
+fixture cases PASS. With the PU connected, before/after event streams are
+identical in both TCA banks (50 stationary / 2135 moving events each).
+After Studio reopened, the existing bridge reported physical MOZA presence
+and WINCTRL/TCA input values with the simulator disconnected. Owner confirmed: A210 stays visible and both throttle sliders move.
+
+Validation: actual reader exercised with fake SDL controllers, independent and
+combined devices, both TCA banks, moving and stationary inputs. Live confirmation
+requires reopening Studio to load the changed modules.
+
+
 ## 2026-09-11 - Public collaboration preparation
 
 Documented the present need for development help and the intended one-time

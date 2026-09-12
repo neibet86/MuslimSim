@@ -20043,15 +20043,15 @@ def _pu_controller_reader(
         # An unsupported single joystick remains unsupported rather than being
         # promoted to the overhead merely because it is index 0.
 
+        # Each physical controller is optional. An absent overhead must not
+        # stop the shared throttle/pedal/TCA reader or invent PU positions.
         if chosen is None:
-            print("WARNING: could not identify the PU OVHD joystick for direct IRS input.")
-            emit_unavailable_snapshot("PU OVHD joystick was not found")
-            return
-
-        print(
-            f"Direct PU controller: {chosen.get_name()} "
-            f"(buttons={chosen.get_numbuttons()}, axes={chosen.get_numaxes()})"
-        )
+            print("PU OVHD absent; continuing independent throttle/pedal/TCA inputs.")
+        else:
+            print(
+                f"Direct PU controller: {chosen.get_name()} "
+                f"(buttons={chosen.get_numbuttons()}, axes={chosen.get_numaxes()})"
+            )
 
         winctrl_ready = False
         if enable_winctrl:
@@ -20127,245 +20127,245 @@ def _pu_controller_reader(
                     f"RUDDER=axis{pedal_rudder_axis}"
                 )
 
-        if chosen.get_numbuttons() < 29:
-            print("WARNING: joystick exposes fewer than 29 buttons; IRS/WIPER direct input unavailable.")
-            emit_unavailable_snapshot("PU OVHD joystick exposes fewer than 29 buttons")
-            return
+        if chosen is not None and chosen.get_numbuttons() < 29:
+            print("WARNING: PU exposes fewer than 29 buttons; other controllers remain available.")
+            chosen = None
 
-        last_left = None
-        last_right = None
-        cand_left = None
-        cand_right = None
-        cand_left_since = 0.0
-        cand_right_since = 0.0
-        last_wiper = None
-        cand_wiper = None
-        cand_wiper_since = 0.0
-        last_axes = [None] * chosen.get_numaxes()
-        last_brightness = None
+        if chosen is not None:
+            last_left = None
+            last_right = None
+            cand_left = None
+            cand_right = None
+            cand_left_since = 0.0
+            cand_right_since = 0.0
+            last_wiper = None
+            cand_wiper = None
+            cand_wiper_since = 0.0
+            last_axes = [None] * chosen.get_numaxes()
+            last_brightness = None
 
-        # ---------------------------------------------------------------
-        # IMPORTANT PU/SDL startup behavior:
-        # Immediately after pygame opens this controller Windows may expose
-        # a temporary all-RELEASED snapshot.  The real periodic HID report
-        # arrives shortly afterward.  v26 synchronized too early, causing
-        # every Stage 1/2 latch to be written ON and then corrected to OFF.
-        #
-        # Wait for a live state transition and 250 ms of stability before
-        # taking any switch baseline.  If the panel genuinely remains
-        # unchanged, accept the state after 2 seconds.
-        # ---------------------------------------------------------------
-        print("Waiting for live PU joystick state before baseline capture...")
-        settle_start = time.monotonic()
-        settle_previous = tuple(
-            bool(chosen.get_button(i))
-            for i in range(chosen.get_numbuttons())
-        )
-        settle_last_change = settle_start
-        settle_saw_transition = False
-
-        while not stop_evt.is_set():
-            pygame.event.pump()
-            settle_now = time.monotonic()
-            settle_current = tuple(
+            # ---------------------------------------------------------------
+            # IMPORTANT PU/SDL startup behavior:
+            # Immediately after pygame opens this controller Windows may expose
+            # a temporary all-RELEASED snapshot.  The real periodic HID report
+            # arrives shortly afterward.  v26 synchronized too early, causing
+            # every Stage 1/2 latch to be written ON and then corrected to OFF.
+            #
+            # Wait for a live state transition and 250 ms of stability before
+            # taking any switch baseline.  If the panel genuinely remains
+            # unchanged, accept the state after 2 seconds.
+            # ---------------------------------------------------------------
+            print("Waiting for live PU joystick state before baseline capture...")
+            settle_start = time.monotonic()
+            settle_previous = tuple(
                 bool(chosen.get_button(i))
                 for i in range(chosen.get_numbuttons())
             )
+            settle_last_change = settle_start
+            settle_saw_transition = False
 
-            if settle_current != settle_previous:
-                settle_previous = settle_current
-                settle_last_change = settle_now
-                settle_saw_transition = True
+            while not stop_evt.is_set():
+                pygame.event.pump()
+                settle_now = time.monotonic()
+                settle_current = tuple(
+                    bool(chosen.get_button(i))
+                    for i in range(chosen.get_numbuttons())
+                )
 
-            if (
-                settle_saw_transition
-                and (settle_now - settle_last_change) >= 0.25
-            ):
-                break
+                if settle_current != settle_previous:
+                    settle_previous = settle_current
+                    settle_last_change = settle_now
+                    settle_saw_transition = True
 
-            if (settle_now - settle_start) >= 2.0:
-                break
+                if (
+                    settle_saw_transition
+                    and (settle_now - settle_last_change) >= 0.25
+                ):
+                    break
 
-            stop_evt.wait(0.01)
+                if (settle_now - settle_start) >= 2.0:
+                    break
 
-        pygame.event.pump()
-        print(
-            "PU joystick baseline captured "
-            f"after {time.monotonic() - settle_start:.2f}s."
-        )
+                stop_evt.wait(0.01)
 
-        # Stage 1 baseline states, zero-based pygame indexes.
-        # Buttons 9..25 -> indexes 8..24.
-        stage1_last = {
-            button_no: bool(chosen.get_button(button_no - 1))
-            for button_no in range(9, 26)
-        }
+            pygame.event.pump()
+            print(
+                "PU joystick baseline captured "
+                f"after {time.monotonic() - settle_start:.2f}s."
+            )
 
-        # A bridge restart is a reconnect, not a request to reconfigure the
-        # aircraft.  Capture every physical baseline but do not write it back
-        # to X-Plane.  In particular, an OFF physical BAT switch must never
-        # extinguish an already-powered cockpit merely because final.py was
-        # restarted.  Later real movements still enqueue the normal events.
+            # Stage 1 baseline states, zero-based pygame indexes.
+            # Buttons 9..25 -> indexes 8..24.
+            stage1_last = {
+                button_no: bool(chosen.get_button(button_no - 1))
+                for button_no in range(9, 26)
+            }
 
-        # Stage 2 buttons 30..42 are all true latching switches.
-        stage2_last = {
-            button_no: bool(chosen.get_button(button_no - 1))
-            for button_no in range(30, 43)
-        }
+            # A bridge restart is a reconnect, not a request to reconfigure the
+            # aircraft.  Capture every physical baseline but do not write it back
+            # to X-Plane.  In particular, an OFF physical BAT switch must never
+            # extinguish an already-powered cockpit merely because final.py was
+            # restarted.  Later real movements still enqueue the normal events.
 
-        # Stage 3 exterior-light buttons are captured as a no-write baseline.
-        stage3_light_last = {
-            button_no: bool(chosen.get_button(button_no - 1))
-            for button_no in STAGE3_LIGHT_BUTTONS
-        }
+            # Stage 2 buttons 30..42 are all true latching switches.
+            stage2_last = {
+                button_no: bool(chosen.get_button(button_no - 1))
+                for button_no in range(30, 43)
+            }
 
-        # Multi-position selector states are baselined only.  Their live
-        # simulator values remain untouched until the user moves the selector.
-        _pos_up0 = bool(chosen.get_button(POSITION_LIGHT_BUTTON_UP - 1))
-        _pos_dn0 = bool(chosen.get_button(POSITION_LIGHT_BUTTON_DOWN - 1))
-        if _pos_up0 and not _pos_dn0:
-            position_last_target = 1.0
-        elif _pos_dn0 and not _pos_up0:
-            position_last_target = -1.0
-        elif not _pos_up0 and not _pos_dn0:
-            position_last_target = 0.0
-        else:
-            position_last_target = None
-        position_candidate = position_last_target
-        position_candidate_since = time.monotonic()
+            # Stage 3 exterior-light buttons are captured as a no-write baseline.
+            stage3_light_last = {
+                button_no: bool(chosen.get_button(button_no - 1))
+                for button_no in STAGE3_LIGHT_BUTTONS
+            }
 
-        _fasten_off0 = bool(chosen.get_button(FASTEN_OFF_BUTTON - 1))
-        _fasten_on0 = bool(chosen.get_button(FASTEN_ON_BUTTON - 1))
-        if _fasten_off0 and not _fasten_on0:
-            fasten_last_target = 0.0
-        elif _fasten_on0 and not _fasten_off0:
-            fasten_last_target = 2.0
-        elif not _fasten_off0 and not _fasten_on0:
-            fasten_last_target = 1.0
-        else:
-            fasten_last_target = None
-        fasten_candidate = fasten_last_target
-        fasten_candidate_since = time.monotonic()
+            # Multi-position selector states are baselined only.  Their live
+            # simulator values remain untouched until the user moves the selector.
+            _pos_up0 = bool(chosen.get_button(POSITION_LIGHT_BUTTON_UP - 1))
+            _pos_dn0 = bool(chosen.get_button(POSITION_LIGHT_BUTTON_DOWN - 1))
+            if _pos_up0 and not _pos_dn0:
+                position_last_target = 1.0
+            elif _pos_dn0 and not _pos_up0:
+                position_last_target = -1.0
+            elif not _pos_up0 and not _pos_dn0:
+                position_last_target = 0.0
+            else:
+                position_last_target = None
+            position_candidate = position_last_target
+            position_candidate_since = time.monotonic()
 
-        no_smoking_last = bool(chosen.get_button(NO_SMOKING_BUTTON - 1))
+            _fasten_off0 = bool(chosen.get_button(FASTEN_OFF_BUTTON - 1))
+            _fasten_on0 = bool(chosen.get_button(FASTEN_ON_BUTTON - 1))
+            if _fasten_off0 and not _fasten_on0:
+                fasten_last_target = 0.0
+            elif _fasten_on0 and not _fasten_off0:
+                fasten_last_target = 2.0
+            elif not _fasten_off0 and not _fasten_on0:
+                fasten_last_target = 1.0
+            else:
+                fasten_last_target = None
+            fasten_candidate = fasten_last_target
+            fasten_candidate_since = time.monotonic()
 
-        # ---------------------------------------------------------------
-        # Stage 4 physical baseline, after the v27 live-state settling.
-        # Three-position selectors are decoded from their two endpoint
-        # contacts.  Invalid overlap is ignored.
-        # ---------------------------------------------------------------
-        def _decode_stage4_threepos(off_pressed, high_pressed):
-            if off_pressed and not high_pressed:
-                return 0
-            if high_pressed and not off_pressed:
-                return 2
-            if not off_pressed and not high_pressed:
-                return 1
-            return None
+            no_smoking_last = bool(chosen.get_button(NO_SMOKING_BUTTON - 1))
 
-        l_pack_last_target = _decode_stage4_threepos(
-            bool(chosen.get_button(L_PACK_OFF_BUTTON - 1)),
-            bool(chosen.get_button(L_PACK_HIGH_BUTTON - 1)),
-        )
-        l_pack_candidate = l_pack_last_target
-        l_pack_candidate_since = time.monotonic()
+            # ---------------------------------------------------------------
+            # Stage 4 physical baseline, after the v27 live-state settling.
+            # Three-position selectors are decoded from their two endpoint
+            # contacts.  Invalid overlap is ignored.
+            # ---------------------------------------------------------------
+            def _decode_stage4_threepos(off_pressed, high_pressed):
+                if off_pressed and not high_pressed:
+                    return 0
+                if high_pressed and not off_pressed:
+                    return 2
+                if not off_pressed and not high_pressed:
+                    return 1
+                return None
 
-        iso_last_target = _decode_stage4_threepos(
-            bool(chosen.get_button(ISO_CLOSE_BUTTON - 1)),
-            bool(chosen.get_button(ISO_OPEN_BUTTON - 1)),
-        )
-        iso_candidate = iso_last_target
-        iso_candidate_since = time.monotonic()
+            l_pack_last_target = _decode_stage4_threepos(
+                bool(chosen.get_button(L_PACK_OFF_BUTTON - 1)),
+                bool(chosen.get_button(L_PACK_HIGH_BUTTON - 1)),
+            )
+            l_pack_candidate = l_pack_last_target
+            l_pack_candidate_since = time.monotonic()
 
-        r_pack_last_target = _decode_stage4_threepos(
-            bool(chosen.get_button(R_PACK_OFF_BUTTON - 1)),
-            bool(chosen.get_button(R_PACK_HIGH_BUTTON - 1)),
-        )
-        r_pack_candidate = r_pack_last_target
-        r_pack_candidate_since = time.monotonic()
+            iso_last_target = _decode_stage4_threepos(
+                bool(chosen.get_button(ISO_CLOSE_BUTTON - 1)),
+                bool(chosen.get_button(ISO_OPEN_BUTTON - 1)),
+            )
+            iso_candidate = iso_last_target
+            iso_candidate_since = time.monotonic()
 
-        stage4_bleed_last = {
-            button_no: bool(chosen.get_button(button_no - 1))
-            for button_no in STAGE4_BLEED_BUTTONS
-        }
+            r_pack_last_target = _decode_stage4_threepos(
+                bool(chosen.get_button(R_PACK_OFF_BUTTON - 1)),
+                bool(chosen.get_button(R_PACK_HIGH_BUTTON - 1)),
+            )
+            r_pack_candidate = r_pack_last_target
+            r_pack_candidate_since = time.monotonic()
 
-        # ---------------------------------------------------------------
-        # Stage 5 physical baseline after the PU joystick has settled.
-        # ---------------------------------------------------------------
-        battery_last = bool(chosen.get_button(BATTERY_BUTTON - 1))
+            stage4_bleed_last = {
+                button_no: bool(chosen.get_button(button_no - 1))
+                for button_no in STAGE4_BLEED_BUTTONS
+            }
 
-        def _decode_apu(off_pressed, start_pressed):
-            if off_pressed and not start_pressed:
-                return 0
-            if start_pressed and not off_pressed:
-                return 2
-            if not off_pressed and not start_pressed:
-                return 1
-            return None
+            # ---------------------------------------------------------------
+            # Stage 5 physical baseline after the PU joystick has settled.
+            # ---------------------------------------------------------------
+            battery_last = bool(chosen.get_button(BATTERY_BUTTON - 1))
 
-        apu_last_target = _decode_apu(
-            bool(chosen.get_button(APU_OFF_BUTTON - 1)),
-            bool(chosen.get_button(APU_START_BUTTON - 1)),
-        )
-        apu_candidate = apu_last_target
-        apu_candidate_since = time.monotonic()
+            def _decode_apu(off_pressed, start_pressed):
+                if off_pressed and not start_pressed:
+                    return 0
+                if start_pressed and not off_pressed:
+                    return 2
+                if not off_pressed and not start_pressed:
+                    return 1
+                return None
 
-        def _decode_ign(left_pressed, right_pressed):
-            if left_pressed and not right_pressed:
-                return -1
-            if right_pressed and not left_pressed:
-                return 1
-            if not left_pressed and not right_pressed:
-                return 0
-            return None
+            apu_last_target = _decode_apu(
+                bool(chosen.get_button(APU_OFF_BUTTON - 1)),
+                bool(chosen.get_button(APU_START_BUTTON - 1)),
+            )
+            apu_candidate = apu_last_target
+            apu_candidate_since = time.monotonic()
 
-        ign_last_target = _decode_ign(
-            bool(chosen.get_button(IGN_LEFT_BUTTON - 1)),
-            bool(chosen.get_button(IGN_RIGHT_BUTTON - 1)),
-        )
-        ign_candidate = ign_last_target
-        ign_candidate_since = time.monotonic()
+            def _decode_ign(left_pressed, right_pressed):
+                if left_pressed and not right_pressed:
+                    return -1
+                if right_pressed and not left_pressed:
+                    return 1
+                if not left_pressed and not right_pressed:
+                    return 0
+                return None
 
-        # PU ENGINE START 1/2 baseline. Accept only a one-hot stable detent.
-        def _decode_pu_eng_start(button_map):
-            active = [
-                button_no for button_no in button_map
-                if chosen.get_button(button_no - 1)
+            ign_last_target = _decode_ign(
+                bool(chosen.get_button(IGN_LEFT_BUTTON - 1)),
+                bool(chosen.get_button(IGN_RIGHT_BUTTON - 1)),
+            )
+            ign_candidate = ign_last_target
+            ign_candidate_since = time.monotonic()
+
+            # PU ENGINE START 1/2 baseline. Accept only a one-hot stable detent.
+            def _decode_pu_eng_start(button_map):
+                active = [
+                    button_no for button_no in button_map
+                    if chosen.get_button(button_no - 1)
+                ]
+                return active[0] if len(active) == 1 else None
+
+            pu_eng1_start_last = _decode_pu_eng_start(PU_ENG1_START_BUTTONS)
+            pu_eng2_start_last = _decode_pu_eng_start(PU_ENG2_START_BUTTONS)
+            pu_eng1_start_candidate = pu_eng1_start_last
+            pu_eng2_start_candidate = pu_eng2_start_last
+            pu_eng1_start_candidate_since = time.monotonic()
+            pu_eng2_start_candidate_since = time.monotonic()
+
+            # Seed every one-hot selector from the stable physical baseline.  A
+            # bridge restart must never make a still selector look like a new
+            # movement, especially the PU engine-start selectors that own the
+            # normal auto-retract logic.
+            left_active0 = [i for i in range(4) if chosen.get_button(i)]
+            right_active0 = [
+                i - 4 for i in range(4, 8) if chosen.get_button(i)
             ]
-            return active[0] if len(active) == 1 else None
+            wiper_active0 = [
+                i - 25 for i in range(25, 29) if chosen.get_button(i)
+            ]
+            last_left = left_active0[0] if len(left_active0) == 1 else None
+            last_right = right_active0[0] if len(right_active0) == 1 else None
+            last_wiper = wiper_active0[0] if len(wiper_active0) == 1 else None
+            cand_left = last_left
+            cand_right = last_right
+            cand_wiper = last_wiper
+            selector_baseline_time = time.monotonic()
+            cand_left_since = selector_baseline_time
+            cand_right_since = selector_baseline_time
+            cand_wiper_since = selector_baseline_time
 
-        pu_eng1_start_last = _decode_pu_eng_start(PU_ENG1_START_BUTTONS)
-        pu_eng2_start_last = _decode_pu_eng_start(PU_ENG2_START_BUTTONS)
-        pu_eng1_start_candidate = pu_eng1_start_last
-        pu_eng2_start_candidate = pu_eng2_start_last
-        pu_eng1_start_candidate_since = time.monotonic()
-        pu_eng2_start_candidate_since = time.monotonic()
-
-        # Seed every one-hot selector from the stable physical baseline.  A
-        # bridge restart must never make a still selector look like a new
-        # movement, especially the PU engine-start selectors that own the
-        # normal auto-retract logic.
-        left_active0 = [i for i in range(4) if chosen.get_button(i)]
-        right_active0 = [
-            i - 4 for i in range(4, 8) if chosen.get_button(i)
-        ]
-        wiper_active0 = [
-            i - 25 for i in range(25, 29) if chosen.get_button(i)
-        ]
-        last_left = left_active0[0] if len(left_active0) == 1 else None
-        last_right = right_active0[0] if len(right_active0) == 1 else None
-        last_wiper = wiper_active0[0] if len(wiper_active0) == 1 else None
-        cand_left = last_left
-        cand_right = last_right
-        cand_wiper = last_wiper
-        selector_baseline_time = time.monotonic()
-        cand_left_since = selector_baseline_time
-        cand_right_since = selector_baseline_time
-        cand_wiper_since = selector_baseline_time
-
-        # ---------------------------------------------------------------
-        # WINCTRL baseline capture through the dedicated SDL joystick.
-        # ---------------------------------------------------------------
+            # ---------------------------------------------------------------
+            # WINCTRL baseline capture through the dedicated SDL joystick.
+            # ---------------------------------------------------------------
         winctrl_last_button_bits = 0
         winctrl_last_axes = None
         winctrl_last_axis_emit = 0.0
@@ -20670,46 +20670,47 @@ def _pu_controller_reader(
             startup_pu_values[key] = float(value)
             startup_pu_labels[key] = str(label)
 
-        for button_no, (key, label) in STAGE1_LATCH_BUTTONS.items():
+        if chosen is not None:
+            for button_no, (key, label) in STAGE1_LATCH_BUTTONS.items():
+                snapshot_pu(
+                    key,
+                    label,
+                    0.0 if stage1_last[button_no] else 1.0,
+                )
+            for button_no, (key, label) in STAGE2_LATCH_BUTTONS.items():
+                snapshot_pu(
+                    key,
+                    label,
+                    0.0 if stage2_last[button_no] else 1.0,
+                )
+            if last_wiper is not None:
+                snapshot_pu("wiper_left", "WIPER LEFT", float(last_wiper))
+                snapshot_pu("wiper_right", "WIPER RIGHT", float(last_wiper))
+            for button_no, (_off_key, _on_key, label) in STAGE3_LIGHT_BUTTONS.items():
+                snapshot_pu(
+                    f"light_{button_no}",
+                    label,
+                    0.0 if stage3_light_last[button_no] else 1.0,
+                )
+            snapshot_pu("position_light", "POSITION/STROBE", position_last_target)
+            snapshot_pu("seatbelt_sign", "FASTEN BELTS", fasten_last_target)
             snapshot_pu(
-                key,
-                label,
-                0.0 if stage1_last[button_no] else 1.0,
+                "no_smoking",
+                "NO SMOKING",
+                0.0 if no_smoking_last else 2.0,
             )
-        for button_no, (key, label) in STAGE2_LATCH_BUTTONS.items():
-            snapshot_pu(
-                key,
-                label,
-                0.0 if stage2_last[button_no] else 1.0,
-            )
-        if last_wiper is not None:
-            snapshot_pu("wiper_left", "WIPER LEFT", float(last_wiper))
-            snapshot_pu("wiper_right", "WIPER RIGHT", float(last_wiper))
-        for button_no, (_off_key, _on_key, label) in STAGE3_LIGHT_BUTTONS.items():
-            snapshot_pu(
-                f"light_{button_no}",
-                label,
-                0.0 if stage3_light_last[button_no] else 1.0,
-            )
-        snapshot_pu("position_light", "POSITION/STROBE", position_last_target)
-        snapshot_pu("seatbelt_sign", "FASTEN BELTS", fasten_last_target)
-        snapshot_pu(
-            "no_smoking",
-            "NO SMOKING",
-            0.0 if no_smoking_last else 2.0,
-        )
-        snapshot_pu("l_pack", "LEFT PACK", l_pack_last_target)
-        snapshot_pu("isolation_valve", "ISOLATION VALVE", iso_last_target)
-        snapshot_pu("r_pack", "RIGHT PACK", r_pack_last_target)
-        for button_no, (key, _command_key, label) in STAGE4_BLEED_BUTTONS.items():
-            snapshot_pu(
-                key,
-                label,
-                0.0 if stage4_bleed_last[button_no] else 1.0,
-            )
-        snapshot_pu("battery_on", "DC/BAT", 1.0 if battery_last else 0.0)
-        snapshot_pu("apu_start", "APU", apu_last_target)
-        snapshot_pu("eng_start_source", "IGNITION", ign_last_target)
+            snapshot_pu("l_pack", "LEFT PACK", l_pack_last_target)
+            snapshot_pu("isolation_valve", "ISOLATION VALVE", iso_last_target)
+            snapshot_pu("r_pack", "RIGHT PACK", r_pack_last_target)
+            for button_no, (key, _command_key, label) in STAGE4_BLEED_BUTTONS.items():
+                snapshot_pu(
+                    key,
+                    label,
+                    0.0 if stage4_bleed_last[button_no] else 1.0,
+                )
+            snapshot_pu("battery_on", "DC/BAT", 1.0 if battery_last else 0.0)
+            snapshot_pu("apu_start", "APU", apu_last_target)
+            snapshot_pu("eng_start_source", "IGNITION", ign_last_target)
 
         def starter_label(button_no: Optional[int], button_map: Dict[int, Tuple[str, str]]) -> str:
             if button_no is None:
@@ -20769,7 +20770,7 @@ def _pu_controller_reader(
                     "engine2": starter_label(
                         pu_eng2_start_last, PU_ENG2_START_BUTTONS
                     ),
-                },
+                } if chosen is not None else {},
                 "winctrl": startup_winctrl,
                 "pedals": startup_pedals,
                 "tca": dict(_tca_boeing_startup_snapshot()),
@@ -20796,203 +20797,204 @@ def _pu_controller_reader(
         # inputs once more before accepting normal events so that a late
         # all-released/default report cannot turn into a real simulator write.
         pygame.event.pump()
-        stage1_last = {
-            button_no: bool(chosen.get_button(button_no - 1))
-            for button_no in range(9, 26)
-        }
-        stage2_last = {
-            button_no: bool(chosen.get_button(button_no - 1))
-            for button_no in range(30, 43)
-        }
-        stage3_light_last = {
-            button_no: bool(chosen.get_button(button_no - 1))
-            for button_no in STAGE3_LIGHT_BUTTONS
-        }
-        stage4_bleed_last = {
-            button_no: bool(chosen.get_button(button_no - 1))
-            for button_no in STAGE4_BLEED_BUTTONS
-        }
-        battery_last = bool(chosen.get_button(BATTERY_BUTTON - 1))
-        no_smoking_last = bool(chosen.get_button(NO_SMOKING_BUTTON - 1))
+        if chosen is not None:
+            stage1_last = {
+                button_no: bool(chosen.get_button(button_no - 1))
+                for button_no in range(9, 26)
+            }
+            stage2_last = {
+                button_no: bool(chosen.get_button(button_no - 1))
+                for button_no in range(30, 43)
+            }
+            stage3_light_last = {
+                button_no: bool(chosen.get_button(button_no - 1))
+                for button_no in STAGE3_LIGHT_BUTTONS
+            }
+            stage4_bleed_last = {
+                button_no: bool(chosen.get_button(button_no - 1))
+                for button_no in STAGE4_BLEED_BUTTONS
+            }
+            battery_last = bool(chosen.get_button(BATTERY_BUTTON - 1))
+            no_smoking_last = bool(chosen.get_button(NO_SMOKING_BUTTON - 1))
 
-        def stable_one_hot(button_numbers):
-            active = [
-                button_no for button_no in button_numbers
-                if chosen.get_button(button_no - 1)
+            def stable_one_hot(button_numbers):
+                active = [
+                    button_no for button_no in button_numbers
+                    if chosen.get_button(button_no - 1)
+                ]
+                return active[0] if len(active) == 1 else None
+
+            left_active = [i for i in range(4) if chosen.get_button(i)]
+            right_active = [i - 4 for i in range(4, 8) if chosen.get_button(i)]
+            wiper_active = [
+                i - 25 for i in range(25, 29) if chosen.get_button(i)
             ]
-            return active[0] if len(active) == 1 else None
+            last_left = left_active[0] if len(left_active) == 1 else None
+            last_right = right_active[0] if len(right_active) == 1 else None
+            last_wiper = wiper_active[0] if len(wiper_active) == 1 else None
+            cand_left = last_left
+            cand_right = last_right
+            cand_wiper = last_wiper
+            rebaseline_time = time.monotonic()
+            cand_left_since = rebaseline_time
+            cand_right_since = rebaseline_time
+            cand_wiper_since = rebaseline_time
 
-        left_active = [i for i in range(4) if chosen.get_button(i)]
-        right_active = [i - 4 for i in range(4, 8) if chosen.get_button(i)]
-        wiper_active = [
-            i - 25 for i in range(25, 29) if chosen.get_button(i)
-        ]
-        last_left = left_active[0] if len(left_active) == 1 else None
-        last_right = right_active[0] if len(right_active) == 1 else None
-        last_wiper = wiper_active[0] if len(wiper_active) == 1 else None
-        cand_left = last_left
-        cand_right = last_right
-        cand_wiper = last_wiper
-        rebaseline_time = time.monotonic()
-        cand_left_since = rebaseline_time
-        cand_right_since = rebaseline_time
-        cand_wiper_since = rebaseline_time
-
-        position_up = bool(chosen.get_button(POSITION_LIGHT_BUTTON_UP - 1))
-        position_down = bool(chosen.get_button(POSITION_LIGHT_BUTTON_DOWN - 1))
-        if position_up and not position_down:
-            position_last_target = 1.0
-        elif position_down and not position_up:
-            position_last_target = -1.0
-        elif not position_up and not position_down:
-            position_last_target = 0.0
-        else:
-            position_last_target = None
-        position_candidate = position_last_target
-        position_candidate_since = rebaseline_time
-
-        fasten_last_target = _decode_stage4_threepos(
-            bool(chosen.get_button(FASTEN_OFF_BUTTON - 1)),
-            bool(chosen.get_button(FASTEN_ON_BUTTON - 1)),
-        )
-        fasten_candidate = fasten_last_target
-        fasten_candidate_since = rebaseline_time
-        l_pack_last_target = _decode_stage4_threepos(
-            bool(chosen.get_button(L_PACK_OFF_BUTTON - 1)),
-            bool(chosen.get_button(L_PACK_HIGH_BUTTON - 1)),
-        )
-        l_pack_candidate = l_pack_last_target
-        l_pack_candidate_since = rebaseline_time
-        iso_last_target = _decode_stage4_threepos(
-            bool(chosen.get_button(ISO_CLOSE_BUTTON - 1)),
-            bool(chosen.get_button(ISO_OPEN_BUTTON - 1)),
-        )
-        iso_candidate = iso_last_target
-        iso_candidate_since = rebaseline_time
-        r_pack_last_target = _decode_stage4_threepos(
-            bool(chosen.get_button(R_PACK_OFF_BUTTON - 1)),
-            bool(chosen.get_button(R_PACK_HIGH_BUTTON - 1)),
-        )
-        r_pack_candidate = r_pack_last_target
-        r_pack_candidate_since = rebaseline_time
-        apu_last_target = _decode_apu(
-            bool(chosen.get_button(APU_OFF_BUTTON - 1)),
-            bool(chosen.get_button(APU_START_BUTTON - 1)),
-        )
-        apu_candidate = apu_last_target
-        apu_candidate_since = rebaseline_time
-        ign_last_target = _decode_ign(
-            bool(chosen.get_button(IGN_LEFT_BUTTON - 1)),
-            bool(chosen.get_button(IGN_RIGHT_BUTTON - 1)),
-        )
-        ign_candidate = ign_last_target
-        ign_candidate_since = rebaseline_time
-        pu_eng1_start_last = stable_one_hot(PU_ENG1_START_BUTTONS)
-        pu_eng2_start_last = stable_one_hot(PU_ENG2_START_BUTTONS)
-        pu_eng1_start_candidate = pu_eng1_start_last
-        pu_eng2_start_candidate = pu_eng2_start_last
-        pu_eng1_start_candidate_since = rebaseline_time
-        pu_eng2_start_candidate_since = rebaseline_time
-        last_axes = [None] * chosen.get_numaxes()
-        last_brightness = None
-
-        # >>> MUSLIMSIM_PU_PHYSICAL_AUTHORITY_V1 SECOND BASELINE >>>
-        # The startup safety comparison above is deliberately read-only.  Now
-        # that it has released the already-settled SDL owner, capture the real
-        # maintained PU positions a second time and make those positions the
-        # Live-mode authority.  Spring/momentary controls and both engine-start
-        # selectors are intentionally absent from this snapshot.
-        pu_authority_values: Dict[str, float] = {}
-
-        def authority_snapshot(key: str, value: Optional[float]) -> None:
-            if value is None:
-                return
-            try:
-                numeric = float(value)
-            except (TypeError, ValueError):
-                return
-            if math.isfinite(numeric):
-                pu_authority_values[str(key)] = numeric
-
-        authority_snapshot("irs_left", last_left)
-        authority_snapshot("irs_right", last_right)
-
-        for button_no, (dataref_key, _label) in STAGE1_LATCH_BUTTONS.items():
-            authority_snapshot(
-                dataref_key,
-                0.0 if stage1_last[button_no] else 1.0,
-            )
-        for button_no, (dataref_key, _label) in STAGE2_LATCH_BUTTONS.items():
-            authority_snapshot(
-                dataref_key,
-                0.0 if stage2_last[button_no] else 1.0,
-            )
-
-        authority_snapshot("wiper_left", last_wiper)
-        authority_snapshot("wiper_right", last_wiper)
-
-        for button_no in STAGE3_LIGHT_BUTTONS:
-            authority_snapshot(
-                f"light_{button_no}",
-                0.0 if stage3_light_last[button_no] else 1.0,
-            )
-
-        authority_snapshot("position_light", position_last_target)
-        authority_snapshot("seatbelt_sign", fasten_last_target)
-        authority_snapshot(
-            "no_smoking",
-            0.0 if no_smoking_last else 2.0,
-        )
-
-        authority_snapshot("l_pack", l_pack_last_target)
-        authority_snapshot("isolation_valve", iso_last_target)
-        authority_snapshot("r_pack", r_pack_last_target)
-        for button_no, (dataref_key, _toggle_key, _label) in STAGE4_BLEED_BUTTONS.items():
-            authority_snapshot(
-                dataref_key,
-                0.0 if stage4_bleed_last[button_no] else 1.0,
-            )
-
-        # Captured PU polarity: button 43 pressed means BAT ON.
-        authority_snapshot("battery_on", 1.0 if battery_last else 0.0)
-        authority_snapshot("eng_start_source", ign_last_target)
-
-        # The physical panel-brightness potentiometer is maintained hardware.
-        # Unlike FLT/LAND altitude encoders, it therefore participates in the
-        # authority baseline and is restored after a virtual-cockpit change.
-        if (
-            brightness_axis >= 0
-            and brightness_axis < chosen.get_numaxes()
-        ):
-            raw_brightness = float(chosen.get_axis(brightness_axis))
-            axis_min = float(brightness_axis_min)
-            axis_max = float(brightness_axis_max)
-            if axis_max <= axis_min:
-                axis_min, axis_max = -0.98, 1.0
-            normalized_brightness = (
-                raw_brightness - axis_min
-            ) / (axis_max - axis_min)
-            if normalized_brightness <= 0.035:
-                normalized_brightness = 0.0
-            elif normalized_brightness >= 0.99:
-                normalized_brightness = 1.0
+            position_up = bool(chosen.get_button(POSITION_LIGHT_BUTTON_UP - 1))
+            position_down = bool(chosen.get_button(POSITION_LIGHT_BUTTON_DOWN - 1))
+            if position_up and not position_down:
+                position_last_target = 1.0
+            elif position_down and not position_up:
+                position_last_target = -1.0
+            elif not position_up and not position_down:
+                position_last_target = 0.0
             else:
-                normalized_brightness = max(
-                    0.0, min(1.0, normalized_brightness)
+                position_last_target = None
+            position_candidate = position_last_target
+            position_candidate_since = rebaseline_time
+
+            fasten_last_target = _decode_stage4_threepos(
+                bool(chosen.get_button(FASTEN_OFF_BUTTON - 1)),
+                bool(chosen.get_button(FASTEN_ON_BUTTON - 1)),
+            )
+            fasten_candidate = fasten_last_target
+            fasten_candidate_since = rebaseline_time
+            l_pack_last_target = _decode_stage4_threepos(
+                bool(chosen.get_button(L_PACK_OFF_BUTTON - 1)),
+                bool(chosen.get_button(L_PACK_HIGH_BUTTON - 1)),
+            )
+            l_pack_candidate = l_pack_last_target
+            l_pack_candidate_since = rebaseline_time
+            iso_last_target = _decode_stage4_threepos(
+                bool(chosen.get_button(ISO_CLOSE_BUTTON - 1)),
+                bool(chosen.get_button(ISO_OPEN_BUTTON - 1)),
+            )
+            iso_candidate = iso_last_target
+            iso_candidate_since = rebaseline_time
+            r_pack_last_target = _decode_stage4_threepos(
+                bool(chosen.get_button(R_PACK_OFF_BUTTON - 1)),
+                bool(chosen.get_button(R_PACK_HIGH_BUTTON - 1)),
+            )
+            r_pack_candidate = r_pack_last_target
+            r_pack_candidate_since = rebaseline_time
+            apu_last_target = _decode_apu(
+                bool(chosen.get_button(APU_OFF_BUTTON - 1)),
+                bool(chosen.get_button(APU_START_BUTTON - 1)),
+            )
+            apu_candidate = apu_last_target
+            apu_candidate_since = rebaseline_time
+            ign_last_target = _decode_ign(
+                bool(chosen.get_button(IGN_LEFT_BUTTON - 1)),
+                bool(chosen.get_button(IGN_RIGHT_BUTTON - 1)),
+            )
+            ign_candidate = ign_last_target
+            ign_candidate_since = rebaseline_time
+            pu_eng1_start_last = stable_one_hot(PU_ENG1_START_BUTTONS)
+            pu_eng2_start_last = stable_one_hot(PU_ENG2_START_BUTTONS)
+            pu_eng1_start_candidate = pu_eng1_start_last
+            pu_eng2_start_candidate = pu_eng2_start_last
+            pu_eng1_start_candidate_since = rebaseline_time
+            pu_eng2_start_candidate_since = rebaseline_time
+            last_axes = [None] * chosen.get_numaxes()
+            last_brightness = None
+
+            # >>> MUSLIMSIM_PU_PHYSICAL_AUTHORITY_V1 SECOND BASELINE >>>
+            # The startup safety comparison above is deliberately read-only.  Now
+            # that it has released the already-settled SDL owner, capture the real
+            # maintained PU positions a second time and make those positions the
+            # Live-mode authority.  Spring/momentary controls and both engine-start
+            # selectors are intentionally absent from this snapshot.
+            pu_authority_values: Dict[str, float] = {}
+
+            def authority_snapshot(key: str, value: Optional[float]) -> None:
+                if value is None:
+                    return
+                try:
+                    numeric = float(value)
+                except (TypeError, ValueError):
+                    return
+                if math.isfinite(numeric):
+                    pu_authority_values[str(key)] = numeric
+
+            authority_snapshot("irs_left", last_left)
+            authority_snapshot("irs_right", last_right)
+
+            for button_no, (dataref_key, _label) in STAGE1_LATCH_BUTTONS.items():
+                authority_snapshot(
+                    dataref_key,
+                    0.0 if stage1_last[button_no] else 1.0,
                 )
-            if brightness_invert:
-                normalized_brightness = 1.0 - normalized_brightness
-            last_brightness = normalized_brightness
+            for button_no, (dataref_key, _label) in STAGE2_LATCH_BUTTONS.items():
+                authority_snapshot(
+                    dataref_key,
+                    0.0 if stage2_last[button_no] else 1.0,
+                )
+
+            authority_snapshot("wiper_left", last_wiper)
+            authority_snapshot("wiper_right", last_wiper)
+
+            for button_no in STAGE3_LIGHT_BUTTONS:
+                authority_snapshot(
+                    f"light_{button_no}",
+                    0.0 if stage3_light_last[button_no] else 1.0,
+                )
+
+            authority_snapshot("position_light", position_last_target)
+            authority_snapshot("seatbelt_sign", fasten_last_target)
             authority_snapshot(
-                "panel_brightness",
-                normalized_brightness,
+                "no_smoking",
+                0.0 if no_smoking_last else 2.0,
             )
 
-        event_q.put((
-            "startup_pu_authority_baseline",
-            pu_authority_values,
-        ))
-        # <<< MUSLIMSIM_PU_PHYSICAL_AUTHORITY_V1 SECOND BASELINE <<<
+            authority_snapshot("l_pack", l_pack_last_target)
+            authority_snapshot("isolation_valve", iso_last_target)
+            authority_snapshot("r_pack", r_pack_last_target)
+            for button_no, (dataref_key, _toggle_key, _label) in STAGE4_BLEED_BUTTONS.items():
+                authority_snapshot(
+                    dataref_key,
+                    0.0 if stage4_bleed_last[button_no] else 1.0,
+                )
+
+            # Captured PU polarity: button 43 pressed means BAT ON.
+            authority_snapshot("battery_on", 1.0 if battery_last else 0.0)
+            authority_snapshot("eng_start_source", ign_last_target)
+
+            # The physical panel-brightness potentiometer is maintained hardware.
+            # Unlike FLT/LAND altitude encoders, it therefore participates in the
+            # authority baseline and is restored after a virtual-cockpit change.
+            if (
+                brightness_axis >= 0
+                and brightness_axis < chosen.get_numaxes()
+            ):
+                raw_brightness = float(chosen.get_axis(brightness_axis))
+                axis_min = float(brightness_axis_min)
+                axis_max = float(brightness_axis_max)
+                if axis_max <= axis_min:
+                    axis_min, axis_max = -0.98, 1.0
+                normalized_brightness = (
+                    raw_brightness - axis_min
+                ) / (axis_max - axis_min)
+                if normalized_brightness <= 0.035:
+                    normalized_brightness = 0.0
+                elif normalized_brightness >= 0.99:
+                    normalized_brightness = 1.0
+                else:
+                    normalized_brightness = max(
+                        0.0, min(1.0, normalized_brightness)
+                    )
+                if brightness_invert:
+                    normalized_brightness = 1.0 - normalized_brightness
+                last_brightness = normalized_brightness
+                authority_snapshot(
+                    "panel_brightness",
+                    normalized_brightness,
+                )
+
+            event_q.put((
+                "startup_pu_authority_baseline",
+                pu_authority_values,
+            ))
+            # <<< MUSLIMSIM_PU_PHYSICAL_AUTHORITY_V1 SECOND BASELINE <<<
 
         if winctrl_ready:
             winctrl_last_button_bits = _winctrl_sdl_button_bits()
@@ -21318,358 +21320,359 @@ def _pu_controller_reader(
                         )
                         next_pedal_diagnostic = now + 0.25
 
-            # Stable one-hot IRS detent recognition (low-latency stable debounce).
-            left_active = [i for i in range(4) if chosen.get_button(i)]
-            right_active = [i - 4 for i in range(4, 8) if chosen.get_button(i)]
+            if chosen is not None:
+                # Stable one-hot IRS detent recognition (low-latency stable debounce).
+                left_active = [i for i in range(4) if chosen.get_button(i)]
+                right_active = [i - 4 for i in range(4, 8) if chosen.get_button(i)]
 
-            left_now = left_active[0] if len(left_active) == 1 else None
-            right_now = right_active[0] if len(right_active) == 1 else None
+                left_now = left_active[0] if len(left_active) == 1 else None
+                right_now = right_active[0] if len(right_active) == 1 else None
 
-            if left_now != cand_left:
-                cand_left = left_now
-                cand_left_since = now
-            elif left_now is not None and (now - cand_left_since) >= PU_SELECTOR_DEBOUNCE_SECONDS:
-                if last_left is None:
-                    # An overlapping contact during the initial snapshot must
-                    # settle silently; it is not a pilot command.
-                    last_left = left_now
-                elif left_now != last_left:
-                    event_q.put(("irs_left", left_now))
-                    last_left = left_now
+                if left_now != cand_left:
+                    cand_left = left_now
+                    cand_left_since = now
+                elif left_now is not None and (now - cand_left_since) >= PU_SELECTOR_DEBOUNCE_SECONDS:
+                    if last_left is None:
+                        # An overlapping contact during the initial snapshot must
+                        # settle silently; it is not a pilot command.
+                        last_left = left_now
+                    elif left_now != last_left:
+                        event_q.put(("irs_left", left_now))
+                        last_left = left_now
 
-            if right_now != cand_right:
-                cand_right = right_now
-                cand_right_since = now
-            elif right_now is not None and (now - cand_right_since) >= PU_SELECTOR_DEBOUNCE_SECONDS:
-                if last_right is None:
-                    last_right = right_now
-                elif right_now != last_right:
-                    event_q.put(("irs_right", right_now))
-                    last_right = right_now
+                if right_now != cand_right:
+                    cand_right = right_now
+                    cand_right_since = now
+                elif right_now is not None and (now - cand_right_since) >= PU_SELECTOR_DEBOUNCE_SECONDS:
+                    if last_right is None:
+                        last_right = right_now
+                    elif right_now != last_right:
+                        event_q.put(("irs_right", right_now))
+                        last_right = right_now
 
-            # -----------------------------------------------------------
-            # Stage 1: buttons 9-25 direct from the PU joystick.
-            # -----------------------------------------------------------
-            for button_no in range(9, 26):
-                current = bool(chosen.get_button(button_no - 1))
-                previous = stage1_last[button_no]
+                # -----------------------------------------------------------
+                # Stage 1: buttons 9-25 direct from the PU joystick.
+                # -----------------------------------------------------------
+                for button_no in range(9, 26):
+                    current = bool(chosen.get_button(button_no - 1))
+                    previous = stage1_last[button_no]
 
-                if current != previous:
-                    stage1_last[button_no] = current
+                    if current != previous:
+                        stage1_last[button_no] = current
 
-                    if button_no <= 15:
-                        # Absolute latch: process both PRESS and RELEASE.
+                        if button_no <= 15:
+                            # Absolute latch: process both PRESS and RELEASE.
+                            event_q.put(
+                                ("stage1_latch", button_no, current)
+                            )
+                        elif current:
+                            # Spring switch endpoint: command on PRESS only.
+                            event_q.put(
+                                ("stage1_momentary", button_no)
+                            )
+
+                        if diagnose_controls:
+                            state_txt = "PRESS" if current else "RELEASE"
+                            print(f"STAGE1 BUTTON {button_no:02d} {state_txt}")
+
+                # -----------------------------------------------------------
+                # Stage 2: buttons 30..42 direct from PU joystick.
+                # Absolute two-position switches; process PRESS and RELEASE.
+                # -----------------------------------------------------------
+                for button_no in range(30, 43):
+                    current = bool(chosen.get_button(button_no - 1))
+                    previous = stage2_last[button_no]
+
+                    if current != previous:
+                        stage2_last[button_no] = current
                         event_q.put(
-                            ("stage1_latch", button_no, current)
-                        )
-                    elif current:
-                        # Spring switch endpoint: command on PRESS only.
-                        event_q.put(
-                            ("stage1_momentary", button_no)
+                            ("stage2_latch", button_no, current)
                         )
 
-                    if diagnose_controls:
-                        state_txt = "PRESS" if current else "RELEASE"
-                        print(f"STAGE1 BUTTON {button_no:02d} {state_txt}")
+                        if diagnose_controls:
+                            state_txt = "PRESS" if current else "RELEASE"
+                            print(f"STAGE2 BUTTON {button_no:02d} {state_txt}")
 
-            # -----------------------------------------------------------
-            # Stage 2: buttons 30..42 direct from PU joystick.
-            # Absolute two-position switches; process PRESS and RELEASE.
-            # -----------------------------------------------------------
-            for button_no in range(30, 43):
-                current = bool(chosen.get_button(button_no - 1))
-                previous = stage2_last[button_no]
+                # WIPER physical detents: buttons 26/27/28/29 = PARK/INT/LOW/HIGH.
+                # Only accept a stable one-hot detent so contact overlap while
+                # rotating cannot create false intermediate commands.
+                wiper_active = [
+                    i - 25 for i in range(25, 29) if chosen.get_button(i)
+                ]
+                wiper_now = wiper_active[0] if len(wiper_active) == 1 else None
 
-                if current != previous:
-                    stage2_last[button_no] = current
-                    event_q.put(
-                        ("stage2_latch", button_no, current)
-                    )
+                if wiper_now != cand_wiper:
+                    cand_wiper = wiper_now
+                    cand_wiper_since = now
+                elif (
+                    wiper_now is not None
+                    and (now - cand_wiper_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
+                ):
+                    if last_wiper is None:
+                        last_wiper = wiper_now
+                    elif wiper_now != last_wiper:
+                        event_q.put(("wiper", wiper_now))
+                        last_wiper = wiper_now
 
-                    if diagnose_controls:
-                        state_txt = "PRESS" if current else "RELEASE"
-                        print(f"STAGE2 BUTTON {button_no:02d} {state_txt}")
+                # -----------------------------------------------------------
+                # Stage 3 exterior lights: buttons 56-60, 73, 76, 77.
+                # -----------------------------------------------------------
+                for button_no, (_off_key, _on_key, _label) in STAGE3_LIGHT_BUTTONS.items():
+                    current = bool(chosen.get_button(button_no - 1))
+                    previous = stage3_light_last[button_no]
+                    if current != previous:
+                        stage3_light_last[button_no] = current
+                        event_q.put(("stage3_light", button_no, current))
+                        if diagnose_controls:
+                            print(
+                                f"STAGE3 LIGHT BUTTON {button_no:02d} "
+                                f"{'PRESS' if current else 'RELEASE'}"
+                            )
 
-            # WIPER physical detents: buttons 26/27/28/29 = PARK/INT/LOW/HIGH.
-            # Only accept a stable one-hot detent so contact overlap while
-            # rotating cannot create false intermediate commands.
-            wiper_active = [
-                i - 25 for i in range(25, 29) if chosen.get_button(i)
-            ]
-            wiper_now = wiper_active[0] if len(wiper_active) == 1 else None
+                # POSITION/STROBE selector.
+                pos_up = bool(chosen.get_button(POSITION_LIGHT_BUTTON_UP - 1))
+                pos_dn = bool(chosen.get_button(POSITION_LIGHT_BUTTON_DOWN - 1))
 
-            if wiper_now != cand_wiper:
-                cand_wiper = wiper_now
-                cand_wiper_since = now
-            elif (
-                wiper_now is not None
-                and (now - cand_wiper_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
-            ):
-                if last_wiper is None:
-                    last_wiper = wiper_now
-                elif wiper_now != last_wiper:
-                    event_q.put(("wiper", wiper_now))
-                    last_wiper = wiper_now
-
-            # -----------------------------------------------------------
-            # Stage 3 exterior lights: buttons 56-60, 73, 76, 77.
-            # -----------------------------------------------------------
-            for button_no, (_off_key, _on_key, _label) in STAGE3_LIGHT_BUTTONS.items():
-                current = bool(chosen.get_button(button_no - 1))
-                previous = stage3_light_last[button_no]
-                if current != previous:
-                    stage3_light_last[button_no] = current
-                    event_q.put(("stage3_light", button_no, current))
-                    if diagnose_controls:
-                        print(
-                            f"STAGE3 LIGHT BUTTON {button_no:02d} "
-                            f"{'PRESS' if current else 'RELEASE'}"
-                        )
-
-            # POSITION/STROBE selector.
-            pos_up = bool(chosen.get_button(POSITION_LIGHT_BUTTON_UP - 1))
-            pos_dn = bool(chosen.get_button(POSITION_LIGHT_BUTTON_DOWN - 1))
-
-            if pos_up and not pos_dn:
-                position_now = 1.0       # STROBE & STEADY
-            elif pos_dn and not pos_up:
-                position_now = -1.0      # STEADY
-            elif not pos_up and not pos_dn:
-                position_now = 0.0       # OFF / center
-            else:
-                position_now = None      # contact overlap while moving
-
-            if position_now != position_candidate:
-                position_candidate = position_now
-                position_candidate_since = now
-            elif (
-                position_now is not None
-                and (now - position_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
-            ):
-                if position_last_target is None:
-                    position_last_target = position_now
-                elif position_now != position_last_target:
-                    event_q.put(("position_light", position_now))
-                    position_last_target = position_now
-
-            # FASTEN BELTS selector.
-            fasten_off = bool(chosen.get_button(FASTEN_OFF_BUTTON - 1))
-            fasten_on = bool(chosen.get_button(FASTEN_ON_BUTTON - 1))
-
-            if fasten_off and not fasten_on:
-                fasten_now = 0.0         # OFF
-            elif fasten_on and not fasten_off:
-                fasten_now = 2.0         # ON
-            elif not fasten_off and not fasten_on:
-                fasten_now = 1.0         # AUTO
-            else:
-                fasten_now = None        # contact overlap
-
-            if fasten_now != fasten_candidate:
-                fasten_candidate = fasten_now
-                fasten_candidate_since = now
-            elif (
-                fasten_now is not None
-                and (now - fasten_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
-            ):
-                if fasten_last_target is None:
-                    fasten_last_target = fasten_now
-                elif fasten_now != fasten_last_target:
-                    event_q.put(("fasten_belts", fasten_now))
-                    fasten_last_target = fasten_now
-
-            # NO SMOKING two-position switch:
-            # pressed = OFF, released = ON.  Physical hardware has no AUTO.
-            no_smoking_now = bool(
-                chosen.get_button(NO_SMOKING_BUTTON - 1)
-            )
-            if no_smoking_now != no_smoking_last:
-                no_smoking_last = no_smoking_now
-                event_q.put(("no_smoking_onoff", no_smoking_now))
-
-            # -----------------------------------------------------------
-            # Stage 4 three-position selectors, low-latency stable detent decode.
-            # -----------------------------------------------------------
-            l_pack_now = _decode_stage4_threepos(
-                bool(chosen.get_button(L_PACK_OFF_BUTTON - 1)),
-                bool(chosen.get_button(L_PACK_HIGH_BUTTON - 1)),
-            )
-            if l_pack_now != l_pack_candidate:
-                l_pack_candidate = l_pack_now
-                l_pack_candidate_since = now
-            elif (
-                l_pack_now is not None
-                and (now - l_pack_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
-            ):
-                if l_pack_last_target is None:
-                    l_pack_last_target = l_pack_now
-                elif l_pack_now != l_pack_last_target:
-                    event_q.put(("stage4_l_pack", l_pack_now))
-                    l_pack_last_target = l_pack_now
-
-            iso_now = _decode_stage4_threepos(
-                bool(chosen.get_button(ISO_CLOSE_BUTTON - 1)),
-                bool(chosen.get_button(ISO_OPEN_BUTTON - 1)),
-            )
-            if iso_now != iso_candidate:
-                iso_candidate = iso_now
-                iso_candidate_since = now
-            elif (
-                iso_now is not None
-                and (now - iso_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
-            ):
-                if iso_last_target is None:
-                    iso_last_target = iso_now
-                elif iso_now != iso_last_target:
-                    event_q.put(("stage4_isolation", iso_now))
-                    iso_last_target = iso_now
-
-            r_pack_now = _decode_stage4_threepos(
-                bool(chosen.get_button(R_PACK_OFF_BUTTON - 1)),
-                bool(chosen.get_button(R_PACK_HIGH_BUTTON - 1)),
-            )
-            if r_pack_now != r_pack_candidate:
-                r_pack_candidate = r_pack_now
-                r_pack_candidate_since = now
-            elif (
-                r_pack_now is not None
-                and (now - r_pack_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
-            ):
-                if r_pack_last_target is None:
-                    r_pack_last_target = r_pack_now
-                elif r_pack_now != r_pack_last_target:
-                    event_q.put(("stage4_r_pack", r_pack_now))
-                    r_pack_last_target = r_pack_now
-
-            # Stage 4 bleed switches: true two-position absolute targets.
-            for button_no in STAGE4_BLEED_BUTTONS:
-                current = bool(chosen.get_button(button_no - 1))
-                previous = stage4_bleed_last[button_no]
-                if current != previous:
-                    stage4_bleed_last[button_no] = current
-                    event_q.put(("stage4_bleed", button_no, current))
-                    if diagnose_controls:
-                        print(
-                            f"STAGE4 BLEED BUTTON {button_no:02d} "
-                            f"{'PRESS' if current else 'RELEASE'}"
-                        )
-
-            # -----------------------------------------------------------
-            # Stage 5 BAT / APU START / IGNITION.
-            # -----------------------------------------------------------
-            battery_now = bool(chosen.get_button(BATTERY_BUTTON - 1))
-            if battery_now != battery_last:
-                battery_last = battery_now
-                event_q.put(("stage5_battery", battery_now))
-
-            apu_now = _decode_apu(
-                bool(chosen.get_button(APU_OFF_BUTTON - 1)),
-                bool(chosen.get_button(APU_START_BUTTON - 1)),
-            )
-            if apu_now != apu_candidate:
-                apu_candidate = apu_now
-                apu_candidate_since = now
-            elif (
-                apu_now is not None
-                and (now - apu_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
-            ):
-                if apu_last_target is None:
-                    apu_last_target = apu_now
-                elif apu_now != apu_last_target:
-                    event_q.put(("stage5_apu", apu_now))
-                    apu_last_target = apu_now
-
-            ign_now = _decode_ign(
-                bool(chosen.get_button(IGN_LEFT_BUTTON - 1)),
-                bool(chosen.get_button(IGN_RIGHT_BUTTON - 1)),
-            )
-            if ign_now != ign_candidate:
-                ign_candidate = ign_now
-                ign_candidate_since = now
-            elif (
-                ign_now is not None
-                and (now - ign_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
-            ):
-                if ign_last_target is None:
-                    ign_last_target = ign_now
-                elif ign_now != ign_last_target:
-                    event_q.put(("stage5_ign", ign_now))
-                    ign_last_target = ign_now
-
-            # PU ENGINE START selectors, stable one-hot detents.
-            pu_eng1_start_now = _decode_pu_eng_start(PU_ENG1_START_BUTTONS)
-            if pu_eng1_start_now != pu_eng1_start_candidate:
-                pu_eng1_start_candidate = pu_eng1_start_now
-                pu_eng1_start_candidate_since = now
-            elif (
-                pu_eng1_start_now is not None
-                and (now - pu_eng1_start_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
-            ):
-                if pu_eng1_start_last is None:
-                    pu_eng1_start_last = pu_eng1_start_now
-                elif pu_eng1_start_now != pu_eng1_start_last:
-                    key, label = PU_ENG1_START_BUTTONS[pu_eng1_start_now]
-                    event_q.put(("pu_engine_start", 1, key, label))
-                    pu_eng1_start_last = pu_eng1_start_now
-
-            pu_eng2_start_now = _decode_pu_eng_start(PU_ENG2_START_BUTTONS)
-            if pu_eng2_start_now != pu_eng2_start_candidate:
-                pu_eng2_start_candidate = pu_eng2_start_now
-                pu_eng2_start_candidate_since = now
-            elif (
-                pu_eng2_start_now is not None
-                and (now - pu_eng2_start_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
-            ):
-                if pu_eng2_start_last is None:
-                    pu_eng2_start_last = pu_eng2_start_now
-                elif pu_eng2_start_now != pu_eng2_start_last:
-                    key, label = PU_ENG2_START_BUTTONS[pu_eng2_start_now]
-                    event_q.put(("pu_engine_start", 2, key, label))
-                    pu_eng2_start_last = pu_eng2_start_now
-
-            # Optional axis diagnostic / brightness input.
-            for axis in range(chosen.get_numaxes()):
-                val = float(chosen.get_axis(axis))
-                prev = last_axes[axis]
-                if prev is None:
-                    last_axes[axis] = val
-                elif abs(val - prev) >= 0.04:
-                    last_axes[axis] = val
-                    if diagnose_controls:
-                        print(f"PU AXIS {axis}: {val:+.3f}")
-
-            if 0 <= brightness_axis < chosen.get_numaxes():
-                raw = float(chosen.get_axis(brightness_axis))
-
-                axis_min = float(brightness_axis_min)
-                axis_max = float(brightness_axis_max)
-                if axis_max <= axis_min:
-                    axis_min, axis_max = -0.98, 1.0
-
-                normalized = (raw - axis_min) / (axis_max - axis_min)
-
-                # Calibrated hardware endpoint snap:
-                # measured MIN was -0.940 on first pass and -0.980 on return;
-                # measured MAX was +0.999969. Treat the bottom few percent
-                # as true zero and the top ~1% as full brightness.
-                if normalized <= 0.035:
-                    normalized = 0.0
-                elif normalized >= 0.99:
-                    normalized = 1.0
+                if pos_up and not pos_dn:
+                    position_now = 1.0       # STROBE & STEADY
+                elif pos_dn and not pos_up:
+                    position_now = -1.0      # STEADY
+                elif not pos_up and not pos_dn:
+                    position_now = 0.0       # OFF / center
                 else:
-                    normalized = max(0.0, min(1.0, normalized))
+                    position_now = None      # contact overlap while moving
 
-                if brightness_invert:
-                    normalized = 1.0 - normalized
+                if position_now != position_candidate:
+                    position_candidate = position_now
+                    position_candidate_since = now
+                elif (
+                    position_now is not None
+                    and (now - position_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
+                ):
+                    if position_last_target is None:
+                        position_last_target = position_now
+                    elif position_now != position_last_target:
+                        event_q.put(("position_light", position_now))
+                        position_last_target = position_now
 
-                if last_brightness is None:
-                    # Do not apply a physical brightness baseline when the
-                    # bridge starts.  That baseline may be at zero while the
-                    # aircraft is intentionally powered and illuminated.
-                    last_brightness = normalized
-                elif abs(normalized - last_brightness) >= 0.01:
-                    event_q.put(("brightness", normalized))
-                    last_brightness = normalized
+                # FASTEN BELTS selector.
+                fasten_off = bool(chosen.get_button(FASTEN_OFF_BUTTON - 1))
+                fasten_on = bool(chosen.get_button(FASTEN_ON_BUTTON - 1))
+
+                if fasten_off and not fasten_on:
+                    fasten_now = 0.0         # OFF
+                elif fasten_on and not fasten_off:
+                    fasten_now = 2.0         # ON
+                elif not fasten_off and not fasten_on:
+                    fasten_now = 1.0         # AUTO
+                else:
+                    fasten_now = None        # contact overlap
+
+                if fasten_now != fasten_candidate:
+                    fasten_candidate = fasten_now
+                    fasten_candidate_since = now
+                elif (
+                    fasten_now is not None
+                    and (now - fasten_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
+                ):
+                    if fasten_last_target is None:
+                        fasten_last_target = fasten_now
+                    elif fasten_now != fasten_last_target:
+                        event_q.put(("fasten_belts", fasten_now))
+                        fasten_last_target = fasten_now
+
+                # NO SMOKING two-position switch:
+                # pressed = OFF, released = ON.  Physical hardware has no AUTO.
+                no_smoking_now = bool(
+                    chosen.get_button(NO_SMOKING_BUTTON - 1)
+                )
+                if no_smoking_now != no_smoking_last:
+                    no_smoking_last = no_smoking_now
+                    event_q.put(("no_smoking_onoff", no_smoking_now))
+
+                # -----------------------------------------------------------
+                # Stage 4 three-position selectors, low-latency stable detent decode.
+                # -----------------------------------------------------------
+                l_pack_now = _decode_stage4_threepos(
+                    bool(chosen.get_button(L_PACK_OFF_BUTTON - 1)),
+                    bool(chosen.get_button(L_PACK_HIGH_BUTTON - 1)),
+                )
+                if l_pack_now != l_pack_candidate:
+                    l_pack_candidate = l_pack_now
+                    l_pack_candidate_since = now
+                elif (
+                    l_pack_now is not None
+                    and (now - l_pack_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
+                ):
+                    if l_pack_last_target is None:
+                        l_pack_last_target = l_pack_now
+                    elif l_pack_now != l_pack_last_target:
+                        event_q.put(("stage4_l_pack", l_pack_now))
+                        l_pack_last_target = l_pack_now
+
+                iso_now = _decode_stage4_threepos(
+                    bool(chosen.get_button(ISO_CLOSE_BUTTON - 1)),
+                    bool(chosen.get_button(ISO_OPEN_BUTTON - 1)),
+                )
+                if iso_now != iso_candidate:
+                    iso_candidate = iso_now
+                    iso_candidate_since = now
+                elif (
+                    iso_now is not None
+                    and (now - iso_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
+                ):
+                    if iso_last_target is None:
+                        iso_last_target = iso_now
+                    elif iso_now != iso_last_target:
+                        event_q.put(("stage4_isolation", iso_now))
+                        iso_last_target = iso_now
+
+                r_pack_now = _decode_stage4_threepos(
+                    bool(chosen.get_button(R_PACK_OFF_BUTTON - 1)),
+                    bool(chosen.get_button(R_PACK_HIGH_BUTTON - 1)),
+                )
+                if r_pack_now != r_pack_candidate:
+                    r_pack_candidate = r_pack_now
+                    r_pack_candidate_since = now
+                elif (
+                    r_pack_now is not None
+                    and (now - r_pack_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
+                ):
+                    if r_pack_last_target is None:
+                        r_pack_last_target = r_pack_now
+                    elif r_pack_now != r_pack_last_target:
+                        event_q.put(("stage4_r_pack", r_pack_now))
+                        r_pack_last_target = r_pack_now
+
+                # Stage 4 bleed switches: true two-position absolute targets.
+                for button_no in STAGE4_BLEED_BUTTONS:
+                    current = bool(chosen.get_button(button_no - 1))
+                    previous = stage4_bleed_last[button_no]
+                    if current != previous:
+                        stage4_bleed_last[button_no] = current
+                        event_q.put(("stage4_bleed", button_no, current))
+                        if diagnose_controls:
+                            print(
+                                f"STAGE4 BLEED BUTTON {button_no:02d} "
+                                f"{'PRESS' if current else 'RELEASE'}"
+                            )
+
+                # -----------------------------------------------------------
+                # Stage 5 BAT / APU START / IGNITION.
+                # -----------------------------------------------------------
+                battery_now = bool(chosen.get_button(BATTERY_BUTTON - 1))
+                if battery_now != battery_last:
+                    battery_last = battery_now
+                    event_q.put(("stage5_battery", battery_now))
+
+                apu_now = _decode_apu(
+                    bool(chosen.get_button(APU_OFF_BUTTON - 1)),
+                    bool(chosen.get_button(APU_START_BUTTON - 1)),
+                )
+                if apu_now != apu_candidate:
+                    apu_candidate = apu_now
+                    apu_candidate_since = now
+                elif (
+                    apu_now is not None
+                    and (now - apu_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
+                ):
+                    if apu_last_target is None:
+                        apu_last_target = apu_now
+                    elif apu_now != apu_last_target:
+                        event_q.put(("stage5_apu", apu_now))
+                        apu_last_target = apu_now
+
+                ign_now = _decode_ign(
+                    bool(chosen.get_button(IGN_LEFT_BUTTON - 1)),
+                    bool(chosen.get_button(IGN_RIGHT_BUTTON - 1)),
+                )
+                if ign_now != ign_candidate:
+                    ign_candidate = ign_now
+                    ign_candidate_since = now
+                elif (
+                    ign_now is not None
+                    and (now - ign_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
+                ):
+                    if ign_last_target is None:
+                        ign_last_target = ign_now
+                    elif ign_now != ign_last_target:
+                        event_q.put(("stage5_ign", ign_now))
+                        ign_last_target = ign_now
+
+                # PU ENGINE START selectors, stable one-hot detents.
+                pu_eng1_start_now = _decode_pu_eng_start(PU_ENG1_START_BUTTONS)
+                if pu_eng1_start_now != pu_eng1_start_candidate:
+                    pu_eng1_start_candidate = pu_eng1_start_now
+                    pu_eng1_start_candidate_since = now
+                elif (
+                    pu_eng1_start_now is not None
+                    and (now - pu_eng1_start_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
+                ):
+                    if pu_eng1_start_last is None:
+                        pu_eng1_start_last = pu_eng1_start_now
+                    elif pu_eng1_start_now != pu_eng1_start_last:
+                        key, label = PU_ENG1_START_BUTTONS[pu_eng1_start_now]
+                        event_q.put(("pu_engine_start", 1, key, label))
+                        pu_eng1_start_last = pu_eng1_start_now
+
+                pu_eng2_start_now = _decode_pu_eng_start(PU_ENG2_START_BUTTONS)
+                if pu_eng2_start_now != pu_eng2_start_candidate:
+                    pu_eng2_start_candidate = pu_eng2_start_now
+                    pu_eng2_start_candidate_since = now
+                elif (
+                    pu_eng2_start_now is not None
+                    and (now - pu_eng2_start_candidate_since) >= PU_SELECTOR_DEBOUNCE_SECONDS
+                ):
+                    if pu_eng2_start_last is None:
+                        pu_eng2_start_last = pu_eng2_start_now
+                    elif pu_eng2_start_now != pu_eng2_start_last:
+                        key, label = PU_ENG2_START_BUTTONS[pu_eng2_start_now]
+                        event_q.put(("pu_engine_start", 2, key, label))
+                        pu_eng2_start_last = pu_eng2_start_now
+
+                # Optional axis diagnostic / brightness input.
+                for axis in range(chosen.get_numaxes()):
+                    val = float(chosen.get_axis(axis))
+                    prev = last_axes[axis]
+                    if prev is None:
+                        last_axes[axis] = val
+                    elif abs(val - prev) >= 0.04:
+                        last_axes[axis] = val
+                        if diagnose_controls:
+                            print(f"PU AXIS {axis}: {val:+.3f}")
+
+                if 0 <= brightness_axis < chosen.get_numaxes():
+                    raw = float(chosen.get_axis(brightness_axis))
+
+                    axis_min = float(brightness_axis_min)
+                    axis_max = float(brightness_axis_max)
+                    if axis_max <= axis_min:
+                        axis_min, axis_max = -0.98, 1.0
+
+                    normalized = (raw - axis_min) / (axis_max - axis_min)
+
+                    # Calibrated hardware endpoint snap:
+                    # measured MIN was -0.940 on first pass and -0.980 on return;
+                    # measured MAX was +0.999969. Treat the bottom few percent
+                    # as true zero and the top ~1% as full brightness.
+                    if normalized <= 0.035:
+                        normalized = 0.0
+                    elif normalized >= 0.99:
+                        normalized = 1.0
+                    else:
+                        normalized = max(0.0, min(1.0, normalized))
+
+                    if brightness_invert:
+                        normalized = 1.0 - normalized
+
+                    if last_brightness is None:
+                        # Do not apply a physical brightness baseline when the
+                        # bridge starts.  That baseline may be at zero while the
+                        # aircraft is intentionally powered and illuminated.
+                        last_brightness = normalized
+                    elif abs(normalized - last_brightness) >= 0.01:
+                        event_q.put(("brightness", normalized))
+                        last_brightness = normalized
 
             # Drain SDL's remaining global events every cycle.  TCA
             # hot-plug events were consumed selectively above; WinCtrl/TCA
@@ -24238,12 +24241,14 @@ def main() -> int:
     ):
         try:
             pdc_bb61_left = MuslimSimPDCBB61Left(
+                keep_3m_backlight_on=True,
                 diagnose=args.diagnose_pdc or args.diagnose_controls,
                 action_sink=lambda event: _muslimsim_fixed_pdc_route(
                     "pdc_bb61_left", event
                 ),
             )
             pdc_bb52_right = MuslimSimPDCBB52Right(
+                keep_3m_backlight_on=True,
                 diagnose=args.diagnose_pdc or args.diagnose_controls,
                 action_sink=lambda event: _muslimsim_fixed_pdc_route(
                     "pdc_bb52_right", event

@@ -439,6 +439,10 @@ def main():
     check_pdc_capture()
     from test_pdc_bb51_verified import check as check_bb51_verified
     check_bb51_verified()
+    from test_independent_controller_inputs import check as check_independent_inputs
+    check_independent_inputs()
+    from test_pdc_3m_active_backlight import check as check_3m_backlight
+    check_3m_backlight()
     print("Known-regression guards passed.")
 
 

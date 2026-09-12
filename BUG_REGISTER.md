@@ -1,5 +1,31 @@
 # MuslimSim bug register
 
+## BUG-67 - 3M PDC backlight dark in active Practice/Live
+
+The fixed PDC only sent the requested brightness, which could remain unset
+or be cleared by aircraft-power/Practice-idle policy. The owner now explicitly
+requires BB51/BB52 backlights on while active. The bridge opts into a 3M-only
+255-level override; normal stop sends zero directly. 3N/default callers remain
+unchanged. Guard: tools/test_pdc_3m_active_backlight.py.
+
+
+## BUG-66 - AY210 presence flicker and throttle input dependency on PU
+
+The MOZA lifecycle spec matched only "MOZA A210", while the real product says
+"MOZA AY210 FFB Base". HID discovery and the live reader remained connected,
+but lifecycle status repeatedly vetoed Studio's positive scan. Match the verified
+USB 346E:1001 and both product names; AB6 remains distinct.
+
+The shared SDL reader also returned whenever the PU overhead was absent. This
+silenced connected WINCTRL/TCA throttles and pedals and caused recurring reader
+restarts. Gate only the overhead-specific baselines and polling; preserve the
+single owner and real remaining device inputs, with empty absent-PU baselines.
+
+Guard: tools/test_independent_controller_inputs.py in mandatory regressions.
+It executes the real reader with fake controllers across both TCA banks, each
+device alone and combinations, moving and stationary startup cases.
+
+
 ## BUG-65 - BB51 reused the BB61 input map (FIXED from full labelled capture)
 
 BB51 had been accepted by the Captain reader without a separate model map.
