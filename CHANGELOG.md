@@ -1,5 +1,12 @@
 # MuslimSim changelog
 
+## 2026-09-11 - Project-wide README
+
+Replaced the upload-focused introduction with a project overview covering
+MuslimSim capabilities, simulator and hardware scope, startup, documentation,
+and development. Removed recent-device-fix details from the landing page.
+Documentation only; verified all README links against the live project.
+
 ## 2026-09-11 - Initial private GitHub source upload
 
 Prepared the canonical source, assets, documentation and offline tests for GitHub.
