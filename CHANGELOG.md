@@ -1,5 +1,20 @@
 # MuslimSim changelog
 
+## 2026-09-12 - Owner flight experience and focused development needs
+
+Updated README and the device achievements guide with the owner's repeated
+DFW–KLAS flights in Zibo and ToLiss: smooth overall, with slow PFP3N/MCDU32
+LCD updates during climbs. Recorded the slow ToLiss exact-image USB-C
+experiment without asserting a measured hardware refresh ceiling. Requested
+help with transport/render profiling, coded screen design and substantial
+MOZA force-feedback tuning in both aircraft families. The owner reports
+decoded captures available; existing AB6 protocol validation limits remain.
+
+Documentation only; no code, mappings, device ownership or output changes.
+Validation: updated document links and diff checks passed. The existing
+regression suite passed in the preceding documentation publication; not
+repeated for this owner-report wording update. No new live test performed.
+
 ## 2026-09-12 - Public device-by-device achievements guide
 
 Validation: all 25 catalogue entries covered; README/guide local links PASS;

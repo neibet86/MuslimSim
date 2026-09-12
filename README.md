@@ -44,12 +44,20 @@ Current development status, based on the maintainer's cockpit testing:
 
 | Simulator / aircraft | Status |
 | --- | --- |
-| **X-Plane — Zibo 737** | Most devices work. This is the main working integration; further testing and improvements are welcome. |
+| **X-Plane — Zibo 737** | Most devices work; used on repeated DFW–KLAS flights. Overall functional, with display refresh/design work and MOZA feedback tuning still needed. |
 | **X-Plane — LevelUp 737** | Needs some tweaks and compatibility testing. |
-| **X-Plane — ToLiss Airbus** | Almost there. Some problems remain with the **MCDU32 (BB36)** and **PFP3N (BB35)** displays. Help reproducing and fixing them is welcome. |
+| **X-Plane — ToLiss Airbus** | Used on repeated DFW–KLAS flights with smooth operation overall. The main reported issue is slow **MCDU32 (BB36)** and **PFP3N (BB35)** LCD updating during climbs; MOZA feedback also needs substantial tuning. |
 | **Microsoft Flight Simulator 2024** | Working simulator integration has **not been started yet**. Existing launcher/catalogue/configuration files are scaffolding, not a completed or validated integration. **Developer help is needed here.** |
 
 Coverage varies by device and aircraft; this is a work in progress, not a claim that every combination is finished.
+
+### Flight-tested status and where help is needed
+
+The maintainer has flown **DFW–Las Vegas (KLAS) multiple times in both Zibo 737 and ToLiss Airbus** using MuslimSim. He reports smooth operation overall; the main issue observed on these flights is **slow PFP3N and MCDU32 LCD updates during climbs**. This is practical flight experience on his setup, not a claim that every hardware/aircraft combination has been validated.
+
+- **ToLiss displays:** The maintainer tried transferring the simulator's own PFD, MFD and ND imagery over the panels' USB-C connection to reproduce the exact simulator screens. Refresh was too slow in that experiment. The bottleneck has not yet been isolated between extraction/rendering, USB transfer and panel refresh; the connector alone does not establish a native video-input mode. Help measuring and improving this path is welcome. Another option is to extend/refine the existing coded ToLiss displays, following the approach already used for Zibo.
+- **Zibo displays:** The coded screens are functional overall, but their visual design still needs refinement, alongside the reported LCD update performance work.
+- **MOZA force feedback:** Feedback already works to some extent, but substantial tuning is still needed to get the feel right in **both Zibo and ToLiss**. The maintainer reports having decoded captures available for this work. Help is wanted with aircraft-specific gains, effect response and validation; existing device-specific protocol gates remain in place, including AB6 fields that have not been byte-confirmed in the implemented profile.
 
 ### Every device and what has been achieved
 

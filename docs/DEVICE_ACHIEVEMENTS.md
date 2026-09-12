@@ -1,6 +1,6 @@
 # Device-by-device progress
 
-Status recorded on **11 September 2026**, from the current MuslimSim source, capture notes, regression checks, and the maintainer's cockpit feedback. This guide describes what has been achieved and where help is still needed. It is not a certification of every device/aircraft combination.
+Status updated on **12 September 2026**, from the current MuslimSim source, capture notes, regression checks, and the maintainer's cockpit feedback. This guide describes what has been achieved and where help is still needed. It is not a certification of every device/aircraft combination.
 
 The catalogue contains **25 entries**: 19 built-in entries and six community profiles. MOZA input and force-feedback entries describe different services for the same physical base. The older PDC compatibility entry covers two hardware variants, described separately below. Accessories and recognized display variants are also listed.
 
@@ -8,12 +8,20 @@ The catalogue contains **25 entries**: 19 built-in entries and six community pro
 
 | Aircraft / simulator | Current position |
 | --- | --- |
-| X-Plane, Zibo 737 | Most devices work; this is the main working integration. |
+| X-Plane, Zibo 737 | Most devices work; repeated DFW–KLAS flights reported. Display performance/design and MOZA tuning remain. |
 | X-Plane, LevelUp 737 | Existing support needs some tweaks and more testing. |
-| X-Plane, ToLiss Airbus | Almost there; problems remain especially with MCDU32 and PFP3N displays. |
+| X-Plane, ToLiss Airbus | Repeated DFW–KLAS flights reported smooth overall; slow MCDU32/PFP3N updates during climbs and MOZA tuning remain. |
 | Microsoft Flight Simulator 2024 | Working integration has not been started. Existing catalogues, presets and launcher scaffolding do not constitute working MSFS24 support. Developer help is wanted. |
 
 **Reading the status:** “captured” means actual hardware reports or protocol traffic were recorded; “implemented” means a path exists in the project; “owner-confirmed” means a particular live check was reported successful. Offline checks protect behavior but do not prove every physical control on every firmware. Community definitions are listed separately because their presence in Studio is not proof of complete runtime support.
+
+### Flight-tested status and where help is needed
+
+The maintainer has flown **DFW–Las Vegas (KLAS) multiple times in both Zibo 737 and ToLiss Airbus** using MuslimSim. He reports smooth operation overall; the main issue observed on these flights is **slow PFP3N and MCDU32 LCD updates during climbs**. This is practical flight experience on his setup, not a claim that every hardware/aircraft combination has been validated.
+
+- **ToLiss displays:** The maintainer tried transferring the simulator's own PFD, MFD and ND imagery over the panels' USB-C connection to reproduce the exact simulator screens. Refresh was too slow in that experiment. The bottleneck has not yet been isolated between extraction/rendering, USB transfer and panel refresh; the connector alone does not establish a native video-input mode. Help measuring and improving this path is welcome. Another option is to extend/refine the existing coded ToLiss displays, following the approach already used for Zibo.
+- **Zibo displays:** The coded screens are functional overall, but their visual design still needs refinement, alongside the reported LCD update performance work.
+- **MOZA force feedback:** Feedback already works to some extent, but substantial tuning is still needed to get the feel right in **both Zibo and ToLiss**. The maintainer reports having decoded captures available for this work. Help is wanted with aircraft-specific gains, effect response and validation; existing device-specific protocol gates remain in place, including AB6 fields that have not been byte-confirmed in the implemented profile.
 
 ## Shared achievements across the integrated devices
 
@@ -120,7 +128,7 @@ The controller-reader fix restored feedback without requiring a connected PU ove
 
 Physical shortcuts are part of the design: **triple-tap `.` (index 38) toggles CDU/FMC and PFD; double-tap `/` (index 69) cycles pages**. Its display owner/router remains separate from BB36. Under ToLiss both keypads operate MCDU1, while their selected local display pages are independent.
 
-**Remaining work:** The maintainer reports outstanding ToLiss PFP3N problems. Native image extraction/plugin experiments and authored displays should not be confused with fully validated coverage of every simulator screen. Preserve keypad routing and gesture timing while fixing them.
+**Remaining work:** The maintainer identifies slow LCD updates during climbs as the main PFP3N issue during otherwise smooth repeated flights. The exact-image USB-C experiment was too slow; transport/rendering profiling or refinement of the existing coded screens is needed. Native image extraction/plugin experiments and authored displays should not be confused with fully validated coverage of every simulator screen. Preserve keypad routing and gesture timing while fixing them.
 
 ### WINCTRL 32 MCDU Captain / MCDU32
 
@@ -130,7 +138,7 @@ Physical shortcuts are part of the design: **triple-tap `.` (index 38) toggles C
 
 **Triple-tap `.` (index 41) toggles CDU/FMC and PFD; double-tap `/` (index 70) cycles pages.** On ToLiss the BB36 graphical loop returns to PFD, whereas BB35's cycle includes CDU. Single punctuation presses retain their keypad meaning after the gesture window.
 
-**Remaining work:** The maintainer reports outstanding ToLiss MCDU32 problems. Reconnect, display ownership and page-switch regression testing remain important.
+**Remaining work:** The maintainer identifies slow LCD updates during climbs as the main MCDU32 issue during otherwise smooth repeated flights. Exact simulator imagery and coded screen rendering are the two approaches under consideration; refresh performance needs measurement. Reconnect, display ownership and page-switch regression testing remain important.
 
 Developers should use the [exact page-switching guide](MCDU_PAGE_SWITCHING.md), including timing, page order and single-owner rules, before changing either panel.
 
@@ -198,7 +206,7 @@ The lifecycle checker now accepts both A210 and AY210 names with the verified US
 
 The service uses its own output collection and serial owner alongside the input reader. It is opt-in through `--moza-ffb`, and absent hardware is handled without starting motor output.
 
-**Remaining work:** Wider tuning and aircraft acceptance. This is a separate output service; older input-only notes saying no MOZA output exists predate this achievement.
+**Remaining work:** Substantial aircraft-specific tuning for both Zibo and ToLiss: the owner reports some working feedback, with decoded captures available, but the feel is not finished. This is a separate output service; older input-only notes saying no MOZA output exists predate this achievement.
 
 ### MOZA AB6 base — inputs
 
@@ -214,7 +222,7 @@ The service uses its own output collection and serial owner alongside the input 
 
 **Achieved:** AB6-specific connection capture established its serial path, enable latch, 227-frame setup and 61-frame polling sequence. A separate profile reuses the shared effect-report machinery for spring, trim, rumble and constant force. **Spring, Damper, Inertia and Friction** physics fields are confirmed. The service is opt-in with `--moza-ab6-ffb` and can coexist with input reading.
 
-**Remaining work:** Overall Intensity, Maximum Torque and Friction Compensation addresses are not byte-confirmed for AB6 and are deliberately refused. AY210's physical effect confirmations are not a substitute for AB6-specific acceptance. The captured disconnect behavior stops polling rather than inventing a HID teardown packet.
+**Remaining work:** The owner reports some working MOZA feedback and decoded captures available, with substantial Zibo/ToLiss tuning still needed. Overall Intensity, Maximum Torque and Friction Compensation addresses are not byte-confirmed for AB6 and are deliberately refused. AY210's physical effect confirmations are not a substitute for AB6-specific acceptance. The captured disconnect behavior stops polling rather than inventing a HID teardown packet.
 
 ### MOZA MFY yoke and MAX3 grip views
 
@@ -237,7 +245,7 @@ These six JSON profiles provide identities, control definitions and initial role
 
 ## What contributors can help finish
 
-The immediate needs are reproducible **ToLiss MCDU32/PFP3N display fixes**, **LevelUp compatibility tweaks**, **MSFS24 integration from the existing scaffolding**, and physical validation of community profiles. Include the exact hardware variant, simulator and aircraft when reporting a result, and distinguish input feedback, simulator commands and hardware outputs.
+The immediate needs are **PFP3N/MCDU32 refresh profiling**, **ToLiss exact-image transport or coded-display refinement**, **Zibo screen design improvements**, **MOZA force-feedback tuning for Zibo and ToLiss**, **LevelUp compatibility tweaks**, **MSFS24 integration from the existing scaffolding**, and physical validation of community profiles. Include the exact hardware variant, simulator and aircraft when reporting a result, and distinguish input feedback, simulator commands and hardware outputs.
 
 Preserve existing assignments, ECAM mappings, TCA faceplates/banks and the single bridge-owned input readers. Read [contribution terms](../CONTRIBUTING.md) before submitting reusable work and [project rules](../AGENTS.md) before changing code. The current aim is development help; any future paid product is intended as a one-time purchase, as stated in the [README](../README.md).
 
