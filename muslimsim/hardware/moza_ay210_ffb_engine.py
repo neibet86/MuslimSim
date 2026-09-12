@@ -89,7 +89,9 @@ CONNECT_TIMEOUT_SECONDS = 15.0
 # sits at in every capture) to keep a safety margin, since a coefficient at
 # or above that boundary risks the field being read as negative by
 # firmware that has only ever been observed treating it as positive.
-SPRING_COEFFICIENT_CEILING = 28000
+# Owner explicitly sets the ceiling to 32000 on 2026-09-12.
+# It remains below the signed 16-bit boundary; profile gain still controls output.
+SPRING_COEFFICIENT_CEILING = 32000
 SPRING_SATURATION_CEILING = 32767
 # The trim capture only ever showed one CP-Offset value (14745, roughly 45%
 # of the signed 16-bit range) - this ceiling is a conservative placeholder,
@@ -184,6 +186,8 @@ class MozaAy210FfbEngine:
         self._serial_lock = threading.Lock()
         self._poll_stop = threading.Event()
         self._poll_thread: Optional[threading.Thread] = None
+        self._connection_log = bytearray()
+        self._preconnect_setup_sent = False
         # A gate's "when" stage resolves its 'key' through this - see
         # _lookup_dataref()'s own comment for why a thin indirection is
         # needed instead of constructing ChainContext with read_dataref_fn
@@ -230,6 +234,8 @@ class MozaAy210FfbEngine:
                 return
             self._device = proto.open_ay210(vid=self._device_profile.vid, pid=self._device_profile.pid)
             self._serial = proto.open_serial(self._serial_port)
+            self._connection_log.clear()
+            self._preconnect_setup_sent = False
             self._poll_stop.clear()
             self._poll_thread = threading.Thread(
                 target=proto.background_poll_loop,
@@ -314,18 +320,20 @@ class MozaAy210FfbEngine:
                     for chan, _ in self._channels_for_effect(effect):
                         self._active_channels.add(chan)
 
-    @staticmethod
-    def _channels_for_effect(effect):
+    def _channels_for_effect(self, effect):
         if effect.kind in ("spring", "trim"):
             return ((proto.CONDITION_EFFECT_BLOCK_INDEX, None),)
         if effect.kind == "rumble":
-            preset = proto.RUMBLE_PRESETS.get(effect.options.get("preset"))
+            preset = self._rumble_presets().get(effect.options.get("preset"))
             if not preset:
                 return ()
             return tuple((chan, code) for chan, code in preset["channels"])
         if effect.kind == "constant_force":
             return ((1, None),)
         return ()
+
+    def _rumble_presets(self):
+        return proto.AB6_RUMBLE_PRESETS if self._device_profile is proto.AB6_PROFILE else proto.RUMBLE_PRESETS
 
     # -- the per-tick entry point --------------------------------------
 
@@ -389,16 +397,37 @@ class MozaAy210FfbEngine:
         # once per connection, and every other bridge subsystem already
         # tolerates the occasional slow tick from device I/O elsewhere in
         # this codebase), but worth revisiting if it proves disruptive.
-        if proto.wait_for_connected(self._serial, 0.05):
-            self._status.connected = True
-            self._status.last_host_connected_seen = time.monotonic()
-            proto.send_serial(self._serial, self._serial_lock, self._device_profile.enable_ffb_command)
-            self._status.latch_write_sent_this_session = True
-            time.sleep(0.05)
+        def prepare_ab6():
+            if self._preconnect_setup_sent:
+                return
+            # AB6 capture places setup and latch in Host Connecting, before
+            # Connected. Waiting for Connected first can deadlock its startup.
             proto.replay_connection_setup(
                 self._device, self._serial, self._serial_lock,
                 self._device_profile.connection_setup_sequence,
             )
+            proto.send_serial(self._serial, self._serial_lock, self._device_profile.enable_ffb_command)
+            self._status.latch_write_sent_this_session = True
+            self._preconnect_setup_sent = True
+
+        is_ab6 = self._device_profile is proto.AB6_PROFILE
+        if proto.wait_for_connected(self._serial, 0.05, buffer=self._connection_log,
+                                    on_connecting=prepare_ab6 if is_ab6 else None):
+            self._status.connected = True
+            self._status.last_host_connected_seen = time.monotonic()
+            if is_ab6:
+                prepare_ab6()  # warm connection may omit the Connecting line
+                proto.replay_connection_setup(self._device, self._serial, self._serial_lock,
+                                              proto.AB6_EFFECT_SETUP_SEQUENCE)
+            else:
+                # Keep AY210's captured post-Connected ordering unchanged.
+                proto.send_serial(self._serial, self._serial_lock, self._device_profile.enable_ffb_command)
+                self._status.latch_write_sent_this_session = True
+                time.sleep(0.05)
+                proto.replay_connection_setup(
+                    self._device, self._serial, self._serial_lock,
+                    self._device_profile.connection_setup_sequence,
+                )
             # CONNECTION_SETUP_SEQUENCE zeroes 'af'/'b0'/'b1'/'b2' as part of
             # its fixed replayed bytes (it does NOT touch overall_intensity/
             # max_torque/friction_compensation - those weren't part of the
@@ -561,6 +590,7 @@ class MozaAy210FfbEngine:
         if now < self._next_heartbeat:
             return
         self._next_heartbeat = now + HEARTBEAT_INTERVAL_SECONDS
+        proto.send_hid(self._device, "1df2")  # device gain, present in both bases' effect captures
         for chan in sorted(self._active_channels):
             proto.send_hid(self._device, f"1a{chan:02x}0101")
 
@@ -678,7 +708,7 @@ class MozaAy210FfbEngine:
                 axes_with_active_trim.add(axis)
 
             elif effect.kind == "rumble":
-                preset = proto.RUMBLE_PRESETS.get(effect.options.get("preset"))
+                preset = self._rumble_presets().get(effect.options.get("preset"))
                 if preset is None:
                     continue
                 magnitude = int(round(_clamp01(gain) * preset["reference_magnitude"]))
@@ -689,7 +719,16 @@ class MozaAy210FfbEngine:
                         # covered by CONNECTION_SETUP_SEQUENCE, so a bare
                         # 0x14 write to an unarmed channel is expected to be
                         # acknowledged with zero physical effect.
-                        proto.replay_rumble_channel_arm(self._device, chan)
+                        if self._device_profile is proto.AB6_PROFILE:
+                            proto.send_feature_report(self._device, '21040000')
+                            arm=list(proto.AB6_RUMBLE_ARM)
+                            if effect.options.get('preset')=='gear_bumps':
+                                arm[-1]='110404ff7f000000000000ffff04e457000000000000'
+                            for packet in arm:
+                                proto.send_hid(self._device, packet)
+                                time.sleep(.015)
+                        else:
+                            proto.replay_rumble_channel_arm(self._device, chan)
                         self._armed_rumble_channels.add(chan)
                     existing = rumble_writes.get(chan)
                     if existing is None or magnitude > existing[0]:
@@ -767,6 +806,28 @@ class MozaAy210FfbEngine:
                 state.dirty = True
                 touched_axes.add(axis)
 
+        # A disabled/gated/missing spring must explicitly relinquish its
+        # coefficients, including baseline conditions installed at connection.
+        # Constant-force mode owns the same firmware slot: never add a spring
+        # condition while that independent mode is configured.
+        has_constant = any(effect.kind == "constant_force" for effect in self._profile.effects)
+        if not has_constant:
+            for axis in ("roll", "pitch"):
+                if axis in axes_with_active_spring or axis in axes_with_active_trim:
+                    continue
+                first_neutral = axis not in self._axis_state
+                state = self._axis_state.setdefault(axis, _AxisConditionState())
+                if state.cp_offset != 0:
+                    continue  # A trim release is still easing to centre.
+                if not first_neutral and not any((state.coef_pos, state.coef_neg, state.sat_pos, state.sat_neg, state.deadband)):
+                    continue  # Already sent neutral: do not repeat it every tick.
+                state.coef_pos = state.coef_neg = 0
+                state.sat_pos = state.sat_neg = 0
+                state.deadband = 0
+                state.implicit_trim_support = False
+                state.dirty = True
+                touched_axes.add(axis)
+
         for axis in touched_axes:
             state = self._axis_state[axis]
             if not state.dirty:
@@ -793,8 +854,8 @@ class MozaAy210FfbEngine:
             packet = proto.build_set_periodic(chan, magnitude, code)
             proto.send_hid(self._device, packet.hex())
 
-        if constant_force_value is not None:
-            packet = proto.build_constant_force(constant_force_value)
+        if has_constant:
+            packet = proto.build_constant_force(constant_force_value or 0)
             proto.send_hid(self._device, packet.hex())
 
     # -- reporting ------------------------------------------------------
@@ -810,6 +871,8 @@ class MozaAy210FfbEngine:
 
     def diagnostics_snapshot(self) -> Dict[str, Any]:
         return {
+            "unsupported_effects": [e.id for e in self._profile.effects
+                                    if e.kind=='rumble' and e.options.get('preset') not in self._rumble_presets()] if self._profile else [],
             "last_tick_error": self._status.last_tick_error,
             "last_effect_values": dict(self._status.last_effect_values),
             "active_channels": sorted(self._active_channels),

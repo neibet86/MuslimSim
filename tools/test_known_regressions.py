@@ -443,6 +443,12 @@ def main():
     check_independent_inputs()
     from test_pdc_3m_active_backlight import check as check_3m_backlight
     check_3m_backlight()
+    from test_moza_preset_picker import check as check_moza_picker
+    check_moza_picker()
+    from test_moza_feedback_controls import check as check_moza_feedback
+    check_moza_feedback()
+    from test_force_test_session import check as check_force_session
+    check_force_session()
     print("Known-regression guards passed.")
 
 

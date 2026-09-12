@@ -1161,3 +1161,74 @@ __all__ = (
     "load_active_profile_name", "save_active_profile_name", "default_active_profile_path",
     "PRESETS", "preset",
 )
+
+
+def offline_profile_command(device: str, action: str, payload: Mapping[str, Any]) -> Dict[str, Any]:
+    """Browse/select existing files before engine registration; never open hardware.
+
+    Selection writes only the existing device-specific active-name sidecar.
+    The engine loads it through its normal startup path once X-Plane connects.
+    """
+    if device not in ALLOWED_DEVICES:
+        raise FfbProfileError("unsupported preset device")
+    store = FfbProfileStore(default_ffb_profile_dir(device))
+    store.discover()
+    names = {name for name, profile in store.profiles.items() if profile.device == device}
+    aliases = {}
+    if device == "moza_a210":
+        aliases = {slug: str(spec.get("name") or slug) for slug, spec in PRESETS.items()}
+        names.update(aliases.values())
+    path = default_active_profile_path(device)
+    if action == "list_profiles":
+        active = load_active_profile_name(path)
+        return {"ok": True, "profiles": sorted(names), "errors": list(store.errors),
+                "active_profile": aliases.get(active, active)}
+    if action == "select_profile":
+        name = str(payload.get("name", "")).strip()
+        if name not in names and name not in aliases:
+            return {"ok": False, "error": f"unknown FFB profile {name!r}"}
+        save_active_profile_name(path, name)
+        if load_active_profile_name(path) != name:
+            return {"ok": False, "error": "could not save selected preset"}
+        return {"ok": True, "pending_engine": True}
+    return {"ok": False, "error": "preset action unavailable while engine is stopped"}
+
+
+def import_profile_file(device: str, source: str) -> Dict[str, Any]:
+    """Validate an explicitly chosen file and retain a private copy; never overwrite."""
+    try:
+        if device not in ALLOWED_DEVICES:
+            raise FfbProfileError("unsupported preset device")
+        path = Path(source)
+        if path.suffix.lower() != ".mslm":
+            raise FfbProfileError("Choose a .mslm preset file.")
+        raw = json.loads(path.read_text(encoding="utf-8-sig"))
+        profile = build_profile(raw, name_hint=path.stem)
+        if profile.device != device:
+            raise FfbProfileError("This preset belongs to " + profile.device.replace("moza_", "MOZA ").upper() + ". Choose a preset for this base.")
+        directory = default_ffb_profile_dir(device)
+        store = FfbProfileStore(directory)
+        store.discover()
+        # Re-importing an identical file selects its existing copy.
+        for name, existing in store.profiles.items():
+            if existing.source_path and json.loads(existing.source_path.read_text(encoding="utf-8")) == raw:
+                return {"ok": True, "name": name}
+        names = set(store.profiles)
+        if device == "moza_a210":
+            names.update(str(spec.get("name") or slug) for slug, spec in PRESETS.items())
+            names.update(PRESETS)
+        name = profile.name
+        index = 2
+        while name in names:
+            name = f"{profile.name} ({index})"
+            index += 1
+        raw["name"] = name
+        # An exclusive filename avoids overwriting even when two imports race.
+        import uuid
+        directory.mkdir(parents=True, exist_ok=True)
+        destination = directory / ("imported_" + uuid.uuid4().hex + ".mslm")
+        with destination.open("x", encoding="utf-8") as output:
+            output.write(json.dumps(raw, indent=2) + "\n")
+        return {"ok": True, "name": name}
+    except (OSError, ValueError, TypeError, FfbProfileError) as exc:
+        return {"ok": False, "error": str(exc)}

@@ -18,6 +18,8 @@ class HardwareLabApp(tk.Tk):
 
     def __init__(self, supervisor: Optional[BridgeSupervisor] = None) -> None:
         super().__init__()
+        from .dropdown_theme import apply_dropdown_theme
+        apply_dropdown_theme(self)
         self.supervisor = supervisor or BridgeSupervisor()
         self.title("MuslimSim Hardware Laboratory")
         self.geometry("1180x760")

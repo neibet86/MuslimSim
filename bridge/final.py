@@ -24006,6 +24006,28 @@ def main() -> int:
                         )
                     except Exception:
                         pass
+                # Explicit offline motor tests and live feedback share one owner
+                # per base, registered before waiting for any simulator.
+                if not args.dry_run:
+                    from muslimsim.hardware.moza_feedback_service import install as install_moza_feedback
+                    def _managed_moza_read(name):
+                        version = lab_simulator_context.get("api_version")
+                        if not version:
+                            return None
+                        try:
+                            indexed = re.fullmatch(r"(.+)\[(\d+)\]", name)
+                            if indexed:
+                                ref = resolve_dataref_id(version, indexed.group(1))
+                                return read_dataref_index(version, ref, int(indexed.group(2)), timeout=0.01)
+                            ref = resolve_dataref_id(version, name)
+                            return read_dataref(version, ref, timeout=0.01)
+                        except Exception:
+                            return None
+                    install_moza_feedback(
+                        control_server, _managed_moza_read,
+                        lambda: bool(lab_simulator_context.get("api_version")),
+                        auto_a210=bool(args.moza_ffb), auto_ab6=bool(args.moza_ab6_ffb),
+                    )
                 active_control_port = control_server.start()
                 # The simulator-down cockpit is bridge-owned: a real HID
                 # press updates supported physical displays even if Studio is
@@ -25656,7 +25678,7 @@ def main() -> int:
     # before FFB setup, placed after this branch, ever ran.
     moza_ffb_engine = None
     moza_ffb_active_profile_path = None
-    if args.moza_ffb:
+    if args.moza_ffb and not getattr(control_server, "_moza_feedback_services", None):
         try:
             if MozaAy210FfbEngine is None or _muslimsim_ffb_profiles is None:
                 raise RuntimeError(f"FFB engine unavailable: {_MUSLIMSIM_MOZA_FFB_ERROR}")
@@ -25877,7 +25899,7 @@ def main() -> int:
     # follow-on device being added.
     moza_ab6_ffb_engine = None
     moza_ab6_ffb_active_profile_path = None
-    if args.moza_ab6_ffb:
+    if args.moza_ab6_ffb and not getattr(control_server, "_moza_feedback_services", None):
         try:
             if MozaAy210FfbEngine is None or _muslimsim_ffb_profiles is None or _MUSLIMSIM_MOZA_AB6_PROFILE is None:
                 raise RuntimeError(f"FFB engine unavailable: {_MUSLIMSIM_MOZA_FFB_ERROR}")

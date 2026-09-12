@@ -1,5 +1,345 @@
 # MuslimSim changelog
 
+## 2026-09-12 — Constant-push warning and three-second preparation interval
+
+Validation: full known-regression suite PASS, including no hardware opening before 3 seconds, retained output duration and every cancellation path. Real Tk layout/routing checks PASS for both bases; whitespace check PASS. Countdown has not yet been physically retried in Studio.
+
+Owner confirmed the independent constant-push force now has the intended strong
+response. Added a prominent warning: the first push can be strong and hands must
+stay on the yoke/control stick throughout the test. Every explicit constant-push
+Start receives a bridge-enforced three-second countdown before hardware setup
+or force activation. The window shows the remaining countdown. Stop, closing
+the window, lost contact or selecting another test cancels the pending push.
+The requested test duration starts after activation, not during the countdown.
+Movement/vibration/resistance tests retain their existing timing and forces.
+Existing gain-off/restoration and protected assignments remain unchanged.
+
+
+## 2026-09-12 — Constant-push slider is independent
+
+Validation: full known-regression suite PASS, including independent ±32000 push across all Movement strength values, active updates, Stop and restoration; whitespace check PASS. Physical A210 retry pending.
+
+Owner reports weak A210 constant push. Read-only device queries showed overall
+intensity and max torque both 100, output gain zero after the test, and all four
+builtin resistance fields zero. Studio's manual constant force was multiplied
+by the unrelated Movement strength setting. Removed that hidden multiplier:
+constant push -100/0/+100 now requests -32000/0/+32000 regardless of movement
+strength. Both bases share this manual-test fix; aircraft-driven profile curves
+and saved files are unchanged. UI labels the independent strength; diagnostics
+show requested_constant_force, including the last test after it stops.
+
+Guard: test_force_test_session covers both bases, both signs, zero, movement
+strength 0/15/50/100%, active direction changes and original-setting restoration.
+No new output path, registration change or SDK dependency. Existing Stop,
+deadlines and captured gain-off remain. The physical cause is not fully proven:
+if the prior Movement strength was already 100, this fix alone cannot increase
+that run's magnitude. A Studio physical retry is still needed.
+
+
+## 2026-09-12 — Blue dropdown text and simplified Studio toolbar
+
+Validation: full known-regression suite PASS; real Tk state/popup/menu colour checks PASS, including normal, focused, readonly, disabled and selected values. Toolbar widget references are removed. No hardware tests started.
+
+All shared dropdown styles now use Studio blue (#5aa9ff), including closed
+values, opened lists, selections and menu items. Disabled text uses muted blue.
+Applied at startup in Studio, the control-panel theme, Hardware Lab and Device
+Platform; child dialogs inherit it. Removed the Eye focus and Wake PU panel
+controls from Studio's toolbar and the obsolete wake-button state updates.
+Device input/output, force tests, saved assignments and protected faceplates
+are unchanged. This is a presentation-only change; no new hardware output.
+Theme setup runs once at startup, with no per-frame work.
+
+
+## 2026-09-12 — Studio force-test Windows write-length regression
+
+Validation: full known-regression suite PASS under Studio Python 3.11, including padded/exact successful writes and failed/short-write rejection; whitespace check PASS. Physical retry pending.
+
+The first Studio physical retry stopped at the report-length check before
+movement. The new integration required returned length == command length.
+Windows HIDAPI output writes can return the larger padded report length;
+that successful result was incorrectly rejected. Accept counts >= command
+length, retain exceptions/negative/zero/short-write rejection, and report the
+report ID plus requested/returned counts on a real failure. Commands, force
+levels, mappings, timers and gain-off/restoration are unchanged.
+
+Guard: tools/test_force_test_session.py now simulates Windows padded output
+counts throughout the real session/lifecycle tests, also tests exact counts,
+and rejects failed/short output and feature writes. The previous fake only
+returned exact lengths and therefore missed this Windows behavior.
+Physical Studio retry remains required. No vendor SDK dependency added.
+Reference: https://github.com/libusb/hidapi/blob/master/windows/hid.c (hid_write).
+
+
+## 2026-09-12 — Bench-confirmed force tests integrated into Studio
+
+Studio's Feedback & Tests now uses MuslimSim's independently authored
+capture-tested output session for both A210 and AB6. Separate roll and pitch
+buttons and a diagonal button use the full tested 0–65535 position range,
+speed 20, temporary centering spring 100 and per-axis travel ratio 100.
+Movement strength controls per-axis follow force through its full 0–100% range.
+The AB6 pitch ratio previously read 20; its original value is restored afterward.
+Targets are percentages of native travel, not measured degrees.
+
+Vibration allocates only the requested capture-derived effect blocks. Spring,
+damping, friction and inertia have individual Start buttons in Test resistance.
+Damping/friction/inertia combine the bench-tested built-in setting with their
+own HID condition on both axes (coefficient up to 32000, zero deadband), and
+temporarily use overall intensity 100. AB6's previous overall 70 is restored.
+Constant push retains signed 32000 capability as its separate test. New-window
+strength defaults are 100%; existing saved test values are preserved and displayed.
+The .mslm test settings remain separate from flight effect curves and assignments.
+
+One existing FeedbackService owns each output session. Opening/loading starts
+nothing. Explicit Start is bounded to five seconds, with Stop, window-contact
+expiry and the captured host lease. Gain-off, position-mode clear/target reset
+where applicable, effect reset and readback-verified original-setting restoration
+run on completion, cancellation, setup failure and shutdown. Restoration failures
+are reported rather than hidden. No joystick input reader, device mappings,
+ECAM, WINCTRL throttle or TCA faceplates/banks changed. Aircraft-driven feedback
+keeps the existing power/telemetry gate and engine; this task installs manual
+Studio tests, not automatic full-strength flight behavior.
+
+No SDK source, library or asset is included. New output code uses MuslimSim's
+existing protocol library and owner captures/physical testing. Hardware names
+identify compatibility; the test feature and implementation are MuslimSim's.
+
+Validation: full tools/test_known_regressions.py PASS under Studio's Python 3.11;
+new tools/test_force_test_session.py covers full-travel signed targets, diagonal
+ordering before gain-on, both-axis condition reports, captured vibration patterns,
+delta updates, original-setting restoration, setup/cleanup failures, ownership,
+Stop, expiry and lost UI contact using simulated transports. Real Tk layout and
+routing checks PASS for both device windows. Per-base work is bounded to two
+axes/the selected effect; 100 unchanged test ticks emit zero target updates.
+
+Physical evidence comes from the isolated tests: A210 roll/pitch travel, AB6
+pitch travel/right roll/one diagonal, AB6 vibration and improved resistance were
+owner-confirmed. The stronger AB6 inertia setting was accepted. Studio physical
+confirmation and aircraft-specific in-flight feel/latency still need user tests.
+
+
+## 2026-09-12 - Confirmed A210 turning, test resistance tuning and AB6 mode
+
+Owner now confirms A210 turns using the capture-matched resistance baseline;
+smoothness and the requested +/-90-degree travel still need tuning and measured
+calibration. Added Test resistance with independent builtin centering spring,
+damper, friction and inertia controls. These update an active timed test and
+save under tuning.test.physics in .mslm; defaults remain the now-working zero
+baseline, with no automatic changes to saved values. Explicit preset resistance
+still takes precedence when selected. The existing 32000 force ceiling remains.
+A spring-centre percentage is not claimed to be a measured physical angle.
+
+AB6 remains physically unresponsive. Working GearBumps_AB6.pcapng identifies
+its device 42 as 346E:1002 and returns param 0x85 = 1 three times, with 0x99=100
+during effects. Our older connection-only extraction incorrectly labelled mode
+0 as force-feedback-active. Corrected AB6 startup to mode 1 using the verified
+single-value encoder/checksum. The older zero was observed in a Cockpit
+connection, not a working force-effect capture. Field restrictions, captured
+channel 4, shutdown/disarm and shared input ownership remain intact. Physical
+AB6 output still requires owner confirmation; this is not declared solved.
+
+
+## 2026-09-12 - Manual test compared with working pitch/roll captures
+
+The owner reports that raising the limit did not restore useful movement and
+asks for a file-level investigation. Compared the working benchmark's complete
+replay, Trim.pcapng serial replies and condition reports, and AB6 captures.
+Trim.pcapng reads back af/b0/b1/b2 as zero throughout both trim tests (11 replies
+per field, AY210 device 51); it requests CP offset 14745 on pitch offset 1 and
+roll offset 0. Current tests instead supplied af=100 and b0=10 by default.
+The original successful benchmark also explicitly clears all four before its
+HID spring ramp. GearBumps_AB6 records its own af=0 write at effect setup.
+
+Manual-test default builtin spring/damper/inertia/friction now match that proven
+zero baseline. The HID movement effect still follows the full 0-100% slider
+with the owner-selected 32000 ceiling; this does not lower requested force.
+The explicit Use fixed preset resistance settings option still overrides those
+values when selected. Saved files, flight profiles, bindings, working A210
+vibration configuration and device ownership remain intact. Physical resolution
+still requires confirmation; no successful packet test is counted as movement.
+
+Validation: full known-regression suite, focused default/override physics tests
+and whitespace checks PASS. Latest observed prior-run diagnostics still show
+af=100/b0=10; the new baseline has not yet been physically confirmed.
+
+
+## 2026-09-12 - Owner-selected 32000 force ceiling
+
+The owner explicitly specifies a 32000 limit and requests no hidden reductions.
+Spring coefficient ceiling is now 32000 for both bases; profile gain still
+scales it. Manual movement sliders span 0-100% on both devices. Removed the
+extra 35% multipliers from manual movement, vibration and constant push.
+Manual constant-push maximum is explicitly 32000; vibration 100% uses its
+base-specific captured reference magnitude. Current slider values and saved
+presets are not silently changed to maximum. Timers, reconnect grace, Stop,
+lost-window expiry, signed bounds and existing mappings remain intact.
+
+Owner reports extremely gentle A210 movement at the old 35% limit; A210
+vibration is confirmed. Useful pitch travel and AB6 physical effects still
+need validation. This entry supersedes earlier temporary 35%/28000 limits.
+
+Validation: full known-regression suite, focused packet/lifecycle checks,
+real Tk window checks and whitespace checks PASS. No 32000 physical test
+was started by the installer.
+
+
+## 2026-09-12 - A210 manual pitch strength ceiling and test outcome
+
+Owner's isolated pitch test was verified in live diagnostics: pitch CP offset
+14745, zero deadband, coefficients 9800, no physical response. The new manual
+35% limit was below the existing capture reference 16384 and the previously
+owner-tested 28000 ceiling. A210 manual strength now spans 0-100% of that
+existing 28000 ceiling, with default 15%, unchanged saturation/trim limits,
+timed operation and Stop. AB6's limit and A210's working vibration path remain
+unchanged. This makes the previously proven stiffness range reachable; it is
+not a claim that pitch movement has been physically fixed.
+
+The test window now distinguishes timed completion, explicit Stop, lost-window
+contact and connection failure instead of showing only hardware output inactive.
+Physical A210 pitch and AB6 tests remain unresolved pending validation.
+
+
+## 2026-09-12 - A210 movement test and AB6-specific effect setup
+
+Owner physically confirms A210 vibration works. A210 roll/pitch and all AB6
+output were reported nonfunctional despite software writes. Manual spring
+strength was scaled a second time and inherited a 5% deadband. Movement tests
+now use zero deadband, direct strength capped at the existing 35% maximum, and
+the captured trim-offset range. The movement slider is 0-35%; existing files
+and simulator assignments are preserved. Both bases receive the captured
+1df2 device-gain heartbeat in addition to effect-start heartbeats.
+
+Decoded device descriptors in RunwayRumble_AB6.pcapng and GearBumps_AB6.pcapng
+identify device 42 as VID:PID 346E:1002. AB6 uses periodic channel 4, not the
+AY210 channel 7. Added its exact 14-message reset/Feature/condition-zero/gain-arm
+setup from GearBumps_AB6 (0 through 0.192793 seconds from 1c03); this was absent
+from the older serial-only Cockpit connection setup. Runway vibration uses
+channel 4, frequency code 80, peak 6881; gear bumps use channel 4, code 35,
+peak 3766 and their own captured arming packet. AB6 exposes these two verified
+textures; other saved textures are preserved and reported as unverified, not
+sent through AY210 channels. More AB6 effects still require capture validation.
+
+Focused packet/lifecycle/reconnect tests, real Tk checks, full known-regression
+suite and whitespace checks PASS. Physical A210 movement and AB6 response await owner
+confirmation after reload. Stop, disarm, bounded tests and protected mappings
+are preserved; merely opening/loading never starts a motor test.
+
+
+## 2026-09-12 - Measured MOZA reconnect delay
+
+Real connection-only probes measured firmware Host Disconnect after polling
+stopped: AB6 2.08 seconds, A210 2.30 seconds. Reopening too soon maintains the
+old connection without a fresh Host Connected event. The managed worker now
+waits six seconds after closing an output connection before reopening it,
+and applies that grace at worker startup. A full zero-effect session measured
+4.47 seconds to the disconnect acknowledgment, so the earlier three-second
+grace was insufficient in the real repeat test. Connection timeout is fifteen
+seconds; once connected the requested motor-test duration remains at most five
+seconds, with the same lost-UI lease. The UI displays the reconnect wait;
+Stop/lease checks remain active and the timer starts only after connection.
+Real zero-vibration checks reached Connected, applied zero effect values and
+closed successfully both directly and through Studio's AB6 worker. This proves
+connection/output dispatch; physical vibration and roll/pitch feel remain
+unconfirmed. Earlier connection ordering alone did not resolve rapid retries.
+
+Validation: full known-regression suite, focused handshake/reconnect tests,
+real Tk checks and whitespace checks PASS. Real hardware zero-vibration repeat
+checks PASS twice per base: AB6 connected at 7.05/7.03 seconds; A210 at
+7.95/8.00 seconds, including the six-second grace. Every check sent Stop and
+closed its owner. Nonzero vibration and movement still await owner confirmation.
+
+
+## 2026-09-12 - MOZA manual-test connection failure
+
+Owner reported no physical response. Live AB6 diagnostics showed test ticks
+but no connection, no physics writes and no effect values. This is a failed
+connection, not proof of a working motor test. Corrected AB6 startup to replay
+its existing captured setup/latch on Host Connecting, before waiting for Host
+Connected; AY210 retains its original post-connect ordering. Connection log
+fragments now survive short polling calls. A test that never connects reports
+a timeout, and the window reports an unavailable bridge instead of silently
+dropping the request. Captured packet values, confirmed fields, test limits,
+Stop/shutdown and all input mappings remain unchanged. Physical response still
+requires owner confirmation after restart.
+
+
+## 2026-09-12 - File-backed MOZA feedback and simulator-off motor tests
+
+Added Feedback & Tests for both bases: independent roll/pitch centre sliders,
+movement strength, captured vibration textures and strength, isolated constant
+push, timed tests (up to five seconds), Stop, and a UI lease which stops tests
+after lost contact. Tests never auto-replay on preset load. Explicit Save writes
+all effect toggles/gains/textures, physics, curves and test settings into the
+.mslm file; existing files are backed up before replacement. Preset files win
+over bundled titles. New/Add/Remove and full JSON editing preserve custom curves.
+
+One managed worker per base is registered before simulator connection, with
+old FFB setup skipped when that owner exists. ToLiss and Zibo use the same
+owner lifecycle; server shutdown closes both. Live output requires simulator
+and readable aircraft power. Offline output requires an explicit timed test.
+AB6 protocol field restrictions remain; tests use only captured report builders.
+Disabled/missing effects clear stale conditions/constant force explicitly.
+
+Created named Zibo/ToLiss starters for both bases without changing saved active
+selections. Exported Boeing files now use engine N1 rather than on-ground as
+the engine-rumble source; 777 gear/spoiler buffet is gated and pitch trim is
+represented. These are software-corrected starting points, not physical tuning
+certification. Existing device mappings/readers and protected faceplates remain.
+
+Validation: fake-engine lifecycle/control tests and real Tk tab/layout checks
+PASS. Required known-regression suite and whitespace checks PASS. Running
+Studio registers both managed services; test records exist without reported
+errors and both bases were stopped when observed. Physical feel/motion still
+awaits owner confirmation. No installer sent motor commands. UI manual tests use reduced output limits and expire automatically.
+
+## 2026-09-12 - Boeing presets exported as actual .mslm files
+
+Exported the current built-in Boeing 737-800 and Boeing 777-300ER definitions
+to named .mslm files in the owner's A210 preset folder for Browse/load use.
+Validated both files against the same schema and compared the decoded profiles
+to their built-in definitions. Active selection and existing files preserved;
+no motor commands, application code or mapping changes. File validation PASS.
+
+## 2026-09-12 - Browse starts in the selected MOZA preset folder
+
+Browse now opens %APPDATA%/MuslimSim/ffb_profiles for A210 and
+%APPDATA%/MuslimSim/ffb_profiles_moza_ab6 for AB6. A missing folder is created
+empty; existing files and selections are preserved. Users can navigate elsewhere.
+Validation: targeted picker checks and mandatory regression suite PASS.
+
+## 2026-09-12 - Browse and load MOZA .mslm presets
+
+Both A210 and AB6 preset menus now offer Browse… (.mslm), including before
+simulator connection. The native file chooser accepts a file from any folder;
+the authenticated bridge validates its format and device, retains a separate
+copy without overwriting existing files, then Studio selects it through the
+existing preset path. Original files are untouched. Name collisions receive
+a distinct list name. Cancel does nothing; invalid/wrong-base files report an
+error without changing selection. Delayed import callbacks retain their base.
+No motor service is enabled and no device protocol or mapping changes.
+
+Validation: focused preset/import tests and required regression suite PASS.
+Reopen Studio to load the changed picker and bridge; live visual check pending.
+
+## 2026-09-12 - MOZA presets available before simulator connection
+
+Fixed A210 .mslm discovery/selection while its FFB engine is not registered:
+the authenticated control server now lists validated preset files and stores
+the chosen name in the existing device-specific sidecar without opening any
+hardware. A registered engine keeps its existing live command route.
+
+AB6 now uses the same dropdown, with independent names, selection and delayed
+callbacks. Existing AB6 reference-calibration choices remain in that menu.
+A210 .mslm files and mappings are preserved; AB6 uses its own preset folder.
+The inspected setup has two valid A210 drop-ins and no AB6 .mslm drop-ins.
+No A210 motor profile is copied or relabelled for AB6. The new-preset action
+is shown only when its FFB service is registered; saved motor selection takes
+effect through the existing engine startup path. AB6 motor enablement remains
+unchanged. No new output, protocol, supervisor flag or power behavior.
+
+Validation: focused offline picker tests and mandatory regression suite PASS.
+Live Studio reload and visual acceptance still needed. Tests use temporary
+profiles and fake callbacks/canvas, with no hardware handles or motor writes.
+
 ## 2026-09-12 - Owner flight experience and focused development needs
 
 Updated README and the device achievements guide with the owner's repeated

@@ -473,11 +473,11 @@ class MuslimSimStudio(tk.Tk):
         self._moza_ffb_physics_local: Dict[str, int] = {}
         # Real .mslm profiles discovered by the bridge (bundled Tony-derived
         # presets plus anything dropped in or saved from this panel) - a
-        # dropdown list, not the fixed two-card row moza_presets.py's older
-        # AB6-only calibration UI still draws (see _draw_moza_ffb_panel).
-        self._moza_ffb_profile_names: List[str] = []
-        self._moza_ffb_preset_dropdown_open = False
-        self._moza_ffb_profiles_fetch_at = 0.0
+        # Both bases keep their own asynchronous preset list and selection.
+        self._moza_ffb_pickers = {
+            key: {"names": [], "open": False, "fetch_at": 0.0, "active": None, "error": ""}
+            for key in ("moza_a210", "moza_ab6")
+        }
         # Same local-optimistic-mirror idiom as _moza_ffb_physics_local, but
         # for the per-effect live gain multiplier (100% = the profile's own
         # curve, unmodified) - set_effect_gain_override() on the engine.
@@ -558,7 +558,8 @@ class MuslimSimStudio(tk.Tk):
         style.map("TButton", background=[("active", "#2a3b5c")])
         style.configure("Accent.TButton", background="#186e74", foreground="white")
         style.map("Accent.TButton", background=[("active", "#238e91")])
-        style.configure("TCombobox", fieldbackground=PANEL_ALT, background=PANEL_ALT, foreground=INK)
+        from .dropdown_theme import apply_dropdown_theme
+        apply_dropdown_theme(self, PANEL_ALT)
 
     def _build(self) -> None:
         header = ttk.Frame(self, padding=(22, 16), style="TFrame")
@@ -643,13 +644,13 @@ class MuslimSimStudio(tk.Tk):
             else:
                 widget = tk.Menubutton(
                     msfs_rail, text=brand.upper(), direction="below",
-                    bg="#18263d", fg="#b9c8e3", activebackground="#28466b", activeforeground="white",
+                    bg="#18263d", fg=BLUE, activebackground="#28466b", activeforeground=BLUE,
                     relief="flat", bd=0, padx=9, pady=6, cursor="hand2",
                     font=("Segoe UI Semibold", 8), takefocus=False,
                 )
                 menu = tk.Menu(
-                    widget, tearoff=0, bg="#12203a", fg="#dbe7fb",
-                    activebackground="#28466b", activeforeground="white",
+                    widget, tearoff=0, bg="#12203a", fg=BLUE,
+                    activebackground="#28466b", activeforeground=BLUE,
                     font=("Segoe UI", 9), bd=0,
                 )
                 for entry in entries:
@@ -716,21 +717,6 @@ class MuslimSimStudio(tk.Tk):
         self.device_detail = tk.StringVar(value="Waiting for device discovery")
         ttk.Label(toolbar, textvariable=self.device_title, style="Panel.TLabel", font=("Segoe UI Semibold", 15)).pack(anchor="w")
         ttk.Label(toolbar, textvariable=self.device_detail, style="PanelMuted.TLabel").pack(anchor="w", pady=(2, 0))
-        self.pu_wake_toggle = ttk.Checkbutton(
-            toolbar,
-            text="Wake PU panel — safe output test",
-            variable=self.pu_wake_test,
-            command=self._toggle_pu_wake,
-        )
-        self.pu_wake_toggle.pack(anchor="e", side="right", padx=(12, 0), pady=(3, 0))
-        self.pu_wake_toggle.state(("disabled",))
-        self.gaze_focus_toggle = ttk.Checkbutton(
-            toolbar,
-            textvariable=self.gaze_focus_label,
-            variable=self.gaze_focus_enabled,
-            command=self._toggle_gaze_focus,
-        )
-        self.gaze_focus_toggle.pack(anchor="e", side="right", padx=(12, 0), pady=(3, 0))
         self.cockpit_side_picker = ttk.Combobox(
             toolbar,
             textvariable=self.cockpit_side,
@@ -1349,10 +1335,6 @@ class MuslimSimStudio(tk.Tk):
             self.device_detail.set(f"Not currently detected  •  {spec['identity']}")
         else:
             self.device_detail.set("Detected device has no captured configuration definition yet." if detected else "Connect a device to see it here.")
-        if self._selected_device == "pu_overhead":
-            self.pu_wake_toggle.state(("!disabled",))
-        else:
-            self.pu_wake_toggle.state(("disabled",))
         if self._selected_device in SIDE_CAPABLE_DEVICES:
             self.cockpit_side.set(self._cockpit_sides.get(self._selected_device, CAPTAIN_SIDE))
             self.cockpit_side_picker.pack(anchor="e", side="right", padx=(12, 0), pady=(3, 0))
@@ -3158,7 +3140,7 @@ class MuslimSimStudio(tk.Tk):
             wake_test = False
         wake_state = "OUTPUT TEST ACTIVE" if wake_test else "OUTPUT TEST STANDBY"
         canvas.create_text(*pt(1102, 18), text=wake_state, anchor="e", fill="#5ff5c2" if wake_test else MUTED, font=("Segoe UI Semibold", max(8, int(10 * scale))))
-        canvas.create_text(*pt(16, 35), state="hidden", text="Click a control to map it. Physical movement is teal; selection is gold. Use the top Wake PU panel switch to test the real lamps, windows, gauge and backlight.", anchor="w", fill=MUTED, font=("Segoe UI", max(7, int(9 * scale))))
+        canvas.create_text(*pt(16, 35), state="hidden", text="Click a control to map it. Physical movement is teal; selection is gold.", anchor="w", fill=MUTED, font=("Segoe UI", max(7, int(9 * scale))))
 
         # P7 is one real 32-bit output field.  Keeping its lamps in an aligned
         # strip makes the output test readable and prevents them from being
@@ -5903,29 +5885,7 @@ class MuslimSimStudio(tk.Tk):
         )
 
         card_top = top + 38
-        if is_ab6:
-            presets = moza_presets_for_device(device)
-            preset_ids = {id(item): item_id for item_id, item in MOZA_UI_PRESETS.items()}
-            active_preset = str(values.get("preset_id") or "")
-            card_width = min(250, max(210, (right - left - 70) / max(1, len(presets))))
-            card_gap = 14
-            card_start = left + 24
-            for index, preset in enumerate(presets):
-                x1 = card_start + index * (card_width + card_gap)
-                x2 = x1 + card_width
-                # Do not rely on a title for selection: each file has a stable
-                # preset identifier in the profile, while the title is just user-facing text.
-                preset_id = preset_ids.get(id(preset), "")
-                selected = preset_id == active_preset
-                fill, outline = ("#1d594f", ACCENT) if selected else ("#1a2940", "#486481")
-                card = canvas.create_round_rect(x1, card_top, x2, card_top + 48, radius=9, fill=fill, outline=outline, width=3 if selected else 2)
-                name = canvas.create_text(x1 + 12, card_top + 16, text=str(preset.get("title") or "Preset"), anchor="w", fill=INK, font=("Segoe UI Semibold", 8, "bold"), width=card_width - 24)
-                source = canvas.create_text(x1 + 12, card_top + 34, text=str(preset.get("source_file") or ""), anchor="w", fill="#c6d5e9", font=("Consolas", 6), width=card_width - 24)
-                self._tag(canvas, card, f"moza_preset:{preset_id}")
-                self._tag(canvas, name, f"moza_preset:{preset_id}")
-                self._tag(canvas, source, f"moza_preset:{preset_id}")
-        else:
-            self._draw_moza_ffb_preset_bar(canvas, left + 24, card_top, right - 24, card_top + 48)
+        self._draw_moza_ffb_preset_bar(canvas, left + 24, card_top, right - 24, card_top + 48)
 
         main_top = card_top + 63
         left_panel, centre_split = left + 16, width * .62
@@ -5958,15 +5918,19 @@ class MuslimSimStudio(tk.Tk):
 
         settings_left, settings_right = centre_split + 6, right - 24
         canvas.create_round_rect(settings_left, main_top, settings_right, bottom - 35, radius=13, fill="#101a2c", outline="#40546f", width=2)
+        button = canvas.create_round_rect(settings_left + 18, main_top + 6, settings_right - 18, main_top + 36,
+                                          radius=8, fill="#1d594f", outline=ACCENT, width=2)
+        label = canvas.create_text((settings_left + settings_right) / 2, main_top + 21,
+                                   text="FEEDBACK & TESTS — ROLL / PITCH / VIBRATION", fill=INK, font=("Segoe UI", 9, "bold"))
+        for item in (button, label):
+            self._tag(canvas, item, "moza_feedback_window")
         if is_ab6:
-            self._draw_moza_ab6_saved_calibration(canvas, settings_left, settings_right, main_top, bottom, width, values)
+            self._draw_moza_ab6_saved_calibration(canvas, settings_left, settings_right, main_top + 42, bottom, width, values)
         else:
-            self._draw_moza_ffb_panel(canvas, settings_left, settings_right, main_top, bottom, width)
-            # Drawn last so its expanded list overlays every panel above,
-            # matching the one-canvas overlay idiom this faceplate already
-            # uses for selection highlight rings.
-            if self._moza_ffb_preset_dropdown_open:
-                self._draw_moza_ffb_preset_dropdown_overlay(canvas, left + 24, card_top + 48, right - 24)
+            self._draw_moza_ffb_panel(canvas, settings_left, settings_right, main_top + 42, bottom, width)
+        # Both bases share the picker, with independent lists and selections.
+        if self._moza_ffb_picker()["open"]:
+            self._draw_moza_ffb_preset_dropdown_overlay(canvas, left + 24, card_top + 48, right - 24)
 
     def _draw_moza_ab6_saved_calibration(
         self, canvas: tk.Canvas, settings_left: float, settings_right: float,
@@ -6026,7 +5990,7 @@ class MuslimSimStudio(tk.Tk):
         _draw_moza_ab6_saved_calibration)."""
 
         diagnostics = self._moza_ffb_diagnostics()
-        engine_running = bool(diagnostics)
+        engine_running = bool(diagnostics.get("connected") and diagnostics.get("last_tick"))
         # server.py's _device_statuses() folds status_snapshot()'s own fields
         # (including "active_profile") straight onto this dict alongside
         # "diagnostics" - there is no nested "state" wrapper to unpack.
@@ -6089,12 +6053,13 @@ class MuslimSimStudio(tk.Tk):
         (bundled Tony-derived presets, drop-ins, and anything saved from
         "+ New Preset"), so this list has no natural fixed width."""
 
-        if not self._moza_ffb_profile_names:
+        if not self._moza_ffb_picker()["names"]:
             self._moza_ffb_list_profiles()
 
-        device_state = self._device_states.get("moza_a210_ffb", {})
+        device_state = self._device_states.get(self._moza_ffb_picker_device() + "_ffb", {})
         active_name = device_state.get("active_profile") if isinstance(device_state, dict) else None
-        open_now = self._moza_ffb_preset_dropdown_open
+        active_name = active_name or self._moza_ffb_picker()["active"]
+        open_now = self._moza_ffb_picker()["open"]
 
         bar = canvas.create_round_rect(
             x1, y1, x2, y2, radius=9,
@@ -6119,14 +6084,16 @@ class MuslimSimStudio(tk.Tk):
         """The expanded list, drawn last so it sits on top of every panel
         beneath it - the same one-canvas overlay idiom as a selection ring."""
 
-        device_state = self._device_states.get("moza_a210_ffb", {})
+        device_state = self._device_states.get(self._moza_ffb_picker_device() + "_ffb", {})
         active_name = device_state.get("active_profile") if isinstance(device_state, dict) else None
+        active_name = active_name or self._moza_ffb_picker()["active"]
 
-        rows = list(self._moza_ffb_profile_names)
+        rows = list(self._moza_ffb_picker()["names"])
         row_height = 30
         list_height = max(1, len(rows)) * row_height if rows else row_height
-        new_preset_top = y1 + list_height
-        panel_bottom = new_preset_top + row_height
+        legacy = moza_presets_for_device("moza_ab6") if self._moza_ffb_picker_device() == "moza_ab6" else []
+        new_preset_top = y1 + list_height + len(legacy) * row_height
+        panel_bottom = new_preset_top + 2 * row_height
 
         canvas.create_round_rect(
             x1, y1, x2, panel_bottom, radius=9,
@@ -6150,10 +6117,28 @@ class MuslimSimStudio(tk.Tk):
         else:
             canvas.create_text(
                 x1 + 14, y1 + row_height / 2, anchor="w",
-                text="Loading presets…" if self._moza_ffb_profiles_fetch_at <= 0.0 else "No presets found yet.",
+                text=self._moza_ffb_picker()["error"] or "No .mslm presets in this device folder.",
                 fill=MUTED, font=("Segoe UI", 8),
             )
 
+        # Preserve the existing AB6 reference-calibration choices in the same menu.
+        for index, preset in enumerate(legacy):
+            preset_id = next(key for key, value in MOZA_UI_PRESETS.items() if value is preset)
+            row_top = y1 + list_height + index * row_height
+            label = canvas.create_text(x1 + 14, row_top + row_height / 2, anchor="w",
+                                       text=str(preset.get("title") or "Reference preset") + " (calibration)",
+                                       fill=INK, font=("Segoe UI", 9), width=(x2 - x1) - 28)
+            hit = canvas.create_rectangle(x1 + 2, row_top, x2 - 2, row_top + row_height, fill="", outline="")
+            for item in (label, hit):
+                self._tag(canvas, item, f"moza_preset:{preset_id}")
+        browse_row = canvas.create_rectangle(x1 + 2, new_preset_top, x2 - 2, new_preset_top + row_height, fill="#20344f", outline="")
+        browse_text = canvas.create_text(x1 + 14, new_preset_top + row_height / 2,
+                                        anchor="w", text="Browse… (.mslm)", fill=INK, font=("Segoe UI", 9, "bold"))
+        for item in (browse_row, browse_text):
+            self._tag(canvas, item, "moza_ffb_browse")
+        new_preset_top += row_height
+        if self._moza_ffb_picker_device() + "_ffb" not in self._device_states:
+            return
         new_row = canvas.create_rectangle(x1 + 2, new_preset_top, x2 - 2, panel_bottom, fill="#20344f", outline="")
         new_text = canvas.create_text(
             x1 + 14, (new_preset_top + panel_bottom) / 2, anchor="w",
@@ -7457,6 +7442,7 @@ class MuslimSimStudio(tk.Tk):
             }[page])
             return True
         if visual_key.startswith("moza_preset:"):
+            self._moza_ffb_picker()["open"] = False
             preset_id = visual_key.partition(":")[2]
             try:
                 values = effective_moza_calibration(device, {"preset_id": preset_id})
@@ -7526,17 +7512,31 @@ class MuslimSimStudio(tk.Tk):
             self._moza_ffb_effect_gain_command(effect_id, new_value)
             return True
         if visual_key == "moza_ffb_preset_toggle":
-            self._moza_ffb_preset_dropdown_open = not self._moza_ffb_preset_dropdown_open
-            if self._moza_ffb_preset_dropdown_open:
+            self._moza_ffb_picker()["open"] = not self._moza_ffb_picker()["open"]
+            if self._moza_ffb_picker()["open"]:
                 self._moza_ffb_list_profiles()
             return True
         if visual_key.startswith("moza_ffb_preset_select:"):
             name = visual_key.partition(":")[2]
-            self._moza_ffb_preset_dropdown_open = False
+            self._moza_ffb_picker()["open"] = False
             self._moza_ffb_select_profile(name)
             return True
+        if visual_key == "moza_feedback_window":
+            from .moza_feedback_window import FeedbackWindow
+            windows = getattr(self, "_moza_feedback_windows", {})
+            window = windows.get(device)
+            if window is not None and window.winfo_exists():
+                window.lift()
+            else:
+                windows[device] = FeedbackWindow(self, device)
+                self._moza_feedback_windows = windows
+            return True
+        if visual_key == "moza_ffb_browse":
+            self._moza_ffb_picker()["open"] = False
+            self._moza_ffb_browse_profile()
+            return True
         if visual_key == "moza_ffb_new_preset":
-            self._moza_ffb_preset_dropdown_open = False
+            self._moza_ffb_picker()["open"] = False
             self._open_moza_ffb_new_preset_dialog()
             return True
         return False
@@ -8133,54 +8133,72 @@ class MuslimSimStudio(tk.Tk):
             ),
         )
 
-    def _moza_ffb_select_profile(self, mslm_name: str) -> None:
-        """Ask the real AY210 FFB engine to load a discovered/bundled
-        `.mslm` profile by name - the same "device_command" RPC pattern as
-        every other MOZA correction on this panel."""
+    def _moza_ffb_picker_device(self, device: Optional[str] = None) -> str:
+        return "moza_ab6" if (device or self._selected_device) == "moza_ab6" else "moza_a210"
 
-        self._moza_ffb_physics_local.clear()
-        self._request(
-            "device_command", device="moza_a210_ffb", action="select_profile",
-            payload={"name": mslm_name},
-            done=lambda result: self.footer.set(
-                f"MOZA AY210 FFB profile {mslm_name!r} selected."
-                if self._device_command_ok(result)
-                else f"MOZA AY210 FFB profile select failed: {self._device_command_error(result)}"
-            ),
-        )
+    def _moza_ffb_picker(self, device: Optional[str] = None) -> Dict[str, Any]:
+        return self._moza_ffb_pickers[self._moza_ffb_picker_device(device)]
+
+    def _moza_ffb_select_profile(self, mslm_name: str, *, device: Optional[str] = None) -> None:
+        device = self._moza_ffb_picker_device(device)
+        def selected(result: Any) -> None:
+            if self._device_command_ok(result):
+                self._moza_ffb_picker(device)["active"] = mslm_name
+                if device == "moza_a210":
+                    self._moza_ffb_physics_local.clear()
+                self.footer.set(f"MOZA preset {mslm_name!r} selected.")
+                self._draw_faceplate()
+            else:
+                self.footer.set(f"Preset selection failed: {self._device_command_error(result)}")
+        self._request("device_command", device=device + "_ffb", action="select_profile",
+                      payload={"name": mslm_name}, done=selected)
+
+    def _moza_ffb_browse_profile(self) -> None:
+        from tkinter import filedialog
+        from ..hardware.ffb_profiles import default_ffb_profile_dir
+        device = self._moza_ffb_picker_device()
+        directory = default_ffb_profile_dir(device)
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            self.footer.set(f"Could not open the preset folder: {exc}")
+            return
+        path = filedialog.askopenfilename(parent=self, title="Load MOZA .mslm preset",
+                                          initialdir=str(directory),
+                                          filetypes=[("MuslimSim preset", "*.mslm")])
+        if not path:
+            return
+        def imported(result: Any) -> None:
+            if not self._device_command_ok(result):
+                self.footer.set(f"Preset could not be loaded: {self._device_command_error(result)}")
+                return
+            name = str(result["result"]["name"])
+            self._moza_ffb_list_profiles(force=True, device=device)
+            self._moza_ffb_select_profile(name, device=device)
+        self._request("device_command", device=device + "_ffb", action="import_profile",
+                      payload={"path": path}, done=imported)
 
     _MOZA_FFB_PROFILES_RETRY_SECONDS = 2.0
 
-    def _moza_ffb_list_profiles(self, *, force: bool = False) -> None:
-        """Refresh the dropdown's list of real .mslm profiles the bridge can
-        see - the two bundled Tony-derived presets plus anything dropped
-        into the profile folder or saved from this panel's "+ New Preset".
-
-        Retries are paced by a timestamp, not a pending/not-pending latch:
-        the main loop's own results-draining code (around
-        `self._results.get_nowait()`) only calls a request's `done` callback
-        on success - a failed request (a timeout, a dropped connection)
-        lands in its `error is not None` branch and never calls `done` at
-        all. A latch that only `done` can clear would then stay stuck
-        forever after the first failure, silently no-opping every later
-        retry attempt from _draw_moza_ffb_preset_bar - exactly what left the
-        dropdown stuck on "Loading presets..." for the rest of a session.
-        """
-
+    def _moza_ffb_list_profiles(self, *, force: bool = False, device: Optional[str] = None) -> None:
+        device = self._moza_ffb_picker_device(device)
+        picker = self._moza_ffb_picker(device)
         now = time.monotonic()
-        if not force and now - self._moza_ffb_profiles_fetch_at < self._MOZA_FFB_PROFILES_RETRY_SECONDS:
+        if not force and now - picker["fetch_at"] < self._MOZA_FFB_PROFILES_RETRY_SECONDS:
             return
-        self._moza_ffb_profiles_fetch_at = now
-        self._request(
-            "device_command", device="moza_a210_ffb", action="list_profiles",
-            payload={}, done=self._receive_moza_ffb_profiles,
-        )
+        picker["fetch_at"] = now
+        self._request("device_command", device=device + "_ffb", action="list_profiles",
+                      payload={}, done=lambda result: self._receive_moza_ffb_profiles(result, device=device))
 
-    def _receive_moza_ffb_profiles(self, result: Any) -> None:
+    def _receive_moza_ffb_profiles(self, result: Any, *, device: Optional[str] = None) -> None:
+        picker = self._moza_ffb_picker(device)
         inner = result.get("result") if isinstance(result, dict) else None
         names = inner.get("profiles") if isinstance(inner, dict) else None
         if isinstance(names, list):
-            self._moza_ffb_profile_names = [str(item) for item in names]
+            picker["names"] = [str(item) for item in names]
+            if "active_profile" in inner:
+                picker["active"] = inner["active_profile"]
+            picker["error"] = "Some preset files could not be read." if inner.get("errors") else ""
             self._draw_faceplate()
 
     _AIRCRAFT_DISPLAY_NAMES: Dict[str, str] = {
@@ -8203,7 +8221,8 @@ class MuslimSimStudio(tk.Tk):
         you save a tuning as a named profile."""
 
         dialog = tk.Toplevel(self)
-        dialog.title("New MOZA AY210 FFB Preset")
+        device = self._moza_ffb_picker_device()
+        dialog.title("New MOZA AB6 FFB Preset" if device == "moza_ab6" else "New MOZA AY210 FFB Preset")
         dialog.configure(bg=PANEL)
         dialog.geometry("420x160")
         dialog.minsize(400, 150)
@@ -8243,7 +8262,7 @@ class MuslimSimStudio(tk.Tk):
                 return
             status_var.set("Saving…")
             self._moza_ffb_save_new_preset(
-                name,
+                name, device=device,
                 done=lambda ok, message: (dialog.destroy() if ok else status_var.set(message)),
             )
 
@@ -8251,19 +8270,23 @@ class MuslimSimStudio(tk.Tk):
         ttk.Button(button_row, text="Save Preset", command=save).pack(side="right", padx=(0, 8))
         dialog.bind("<Return>", lambda _e: save())
 
-    def _moza_ffb_save_new_preset(self, name: str, *, done: Callable[[bool, str], None]) -> None:
+    def _moza_ffb_save_new_preset(self, name: str, *, done: Callable[[bool, str], None], device: Optional[str] = None) -> None:
+        device = self._moza_ffb_picker_device(device)
         self._request(
-            "device_command", device="moza_a210_ffb", action="save_profile",
+            "device_command", device=device + "_ffb", action="save_profile",
             payload={"name": name},
-            done=lambda result: self._finish_moza_ffb_save_new_preset(result, name, done),
+            done=lambda result: self._finish_moza_ffb_save_new_preset(result, name, done, device=device),
         )
 
-    def _finish_moza_ffb_save_new_preset(self, result: Any, name: str, done: Callable[[bool, str], None]) -> None:
+    def _finish_moza_ffb_save_new_preset(self, result: Any, name: str, done: Callable[[bool, str], None], *, device: Optional[str] = None) -> None:
+        device = self._moza_ffb_picker_device(device)
         ok = self._device_command_ok(result)
         if ok:
-            self._moza_ffb_physics_local.clear()
-            self._moza_ffb_list_profiles(force=True)
-            self.footer.set(f"MOZA AY210 FFB preset {name!r} saved and selected.")
+            if device == "moza_a210":
+                self._moza_ffb_physics_local.clear()
+            self._moza_ffb_picker(device)["active"] = name
+            self._moza_ffb_list_profiles(force=True, device=device)
+            self.footer.set(f"MOZA preset {name!r} saved and selected.")
         message = "" if ok else f"Save failed: {self._device_command_error(result)}"
         done(ok, message)
 

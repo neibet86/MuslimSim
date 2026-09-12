@@ -331,10 +331,13 @@ AB6_DEFAULT_SERIAL_PORT = "COM6"
 # mid-"Host Connecting", before "Host Connected" was logged (the AY210's own
 # equivalent write instead fires *after* "Host Connected" - a second
 # confirmed real timing difference between the two devices, not assumed).
-# VALUE=0x00 here, not 0x01 like the AY210's ENABLE_FFB_COMMAND - confirmed
-# by exhaustive search: no other write to param 0x85 exists anywhere in the
-# 60-second capture this was found in.
-AB6_ENABLE_FFB_COMMAND = "7e031f1285000044"
+# Historical connection-only extraction used value 0; see the correction
+# from the device-specific working effect capture immediately below.
+# The older Cockpit connection capture's value 0 was not evidence of
+# active force mode. GearBumps_AB6.pcapng identifies device 42 as 346E:1002
+# and reads back param 85 = 1 three times during its working FFB session.
+# Use that independently observed active mode, not Cockpit's idle mode 0.
+AB6_ENABLE_FFB_COMMAND = "7e031f1285000145"
 
 # The AB6's own real captured connection setup burst, t=0 aligned to the
 # first serial frame after "Host Connecting" was logged, ending right before
@@ -858,6 +861,21 @@ def open_ay210(*, vid: int = VID, pid: int = PID) -> "hid.device":
     return device
 
 
+
+# VID:PID 346E:1002, device 42 in GearBumps_AB6.pcapng. Effect setup
+# is separate from Cockpit's serial-only connection/configuration burst.
+AB6_EFFECT_SETUP_SEQUENCE = ((0.0, 'hid', '1c03'), (0.002, 'feature', '21010000'), (0.015875, 'hid', '110101ff7f000000000000ffff040000000000000000'), (0.04679, 'feature', '21080000'), (0.06451, 'hid', '110208ff7f000000000000ff00042823000000000000'), (0.093323, 'feature', '21080000'), (0.108838, 'hid', '110308ff7f000000000000ff00042823000000000000'), (0.186738, 'hid', '110101ff7f000000000000ffff040000000000000000'), (0.18751, 'hid', '15010000'), (0.188474, 'hid', '130200000000400040ff7fff7f6606'), (0.189458, 'hid', '130201000000400040ff7fff7f6606'), (0.190491, 'hid', '13030000000000000000000000b77e'), (0.191521, 'hid', '13030100000000000000000000b77e'), (0.192793, 'serial', '7e031f12990064bc'))
+# Independently decoded from RunwayRumble_AB6 and GearBumps_AB6.
+AB6_RUMBLE_PRESETS = {
+    'runway_rumble': {'channels': ((4, 80),), 'reference_magnitude': 6881},
+    'gear_bumps': {'channels': ((4, 35),), 'reference_magnitude': 3766},
+}
+AB6_RUMBLE_ARM = (
+    '110404ff7f000000000000ffff040000000000000000',
+    '110404ff7f000000000000ffff040000000000000000',
+    '110404ff7f000000000000ffff04bc34000000000000',
+)
+
 def open_serial(port: str = DEFAULT_SERIAL_PORT) -> "serial.Serial":
     if serial is None:
         raise RuntimeError("pyserial is not installed (pip install pyserial)")
@@ -916,7 +934,7 @@ def background_poll_loop(
             return
 
 
-def wait_for_connected(ser: "serial.Serial", timeout: float) -> bool:
+def wait_for_connected(ser: "serial.Serial", timeout: float, *, buffer=None, on_connecting=None) -> bool:
     """Read the device's own debug log until it prints
     "[INFO]motor_app.c:598 Host Connected." (or the timeout elapses).
 
@@ -928,15 +946,19 @@ def wait_for_connected(ser: "serial.Serial", timeout: float) -> bool:
     reset_input_buffer() is what actually handles stale data."""
 
     needle = b"Host Connected"
-    buf = b""
+    # The engine polls briefly; a firmware line can straddle two calls.
+    # Keep that partial line for this connection, never across port opens.
+    buf = buffer if buffer is not None else bytearray()
     start = time.monotonic()
     while time.monotonic() - start < timeout:
         chunk = ser.read(4096)
         if chunk:
-            buf += chunk
+            buf.extend(chunk)
+            if on_connecting is not None and b"Host Connecting" in buf:
+                on_connecting()
             if needle in buf:
                 return True
-            buf = buf[-len(needle):]
+            del buf[:-32]
     return False
 
 

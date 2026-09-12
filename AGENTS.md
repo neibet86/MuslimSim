@@ -62,6 +62,17 @@ does not apply to 3N PDC hardware or any other device. Disabling/stopping the
 device and normal Studio shutdown still send capture-proven zero before
 closing its HID handle. Do not remove this exception as an aircraft-power bug.
 
+### Owner exception — explicit MOZA motor tests and preset saves (2026-09-12)
+
+The owner explicitly requests real A210 and AB6 movement/vibration tests with
+the simulator off, including independent roll and pitch. Only a deliberate
+Feedback & Tests action may start an offline motor test. Tests must have a
+bounded duration, Stop, lost-UI-contact expiry, and captured device-specific
+shutdown. Merely opening a page/loading a preset must never start a test.
+Explicit Save may write .mslm calibration/effect settings in Practice; normal
+Practice still never saves simulator-function assignments. Live FFB remains
+power/telemetry gated. Preserve AB6's confirmed-field restrictions.
+
 ### 0.2 Never disturb something that already works
 
 Fix the smallest part that is actually broken. A change must not alter the

@@ -152,8 +152,8 @@ class DeviceCard(ttk.Frame):
             self.probe_button = ttk.Menubutton(row, text="Diagnostics", width=12)
             menu = tk.Menu(
                 self.probe_button, tearoff=0,
-                bg=COLOURS["panel_alt"], fg=COLOURS["text"],
-                activebackground=COLOURS["accent"], activeforeground="#ffffff",
+                bg=COLOURS["panel_alt"], fg="#5aa9ff",
+                activebackground=COLOURS["line"], activeforeground="#5aa9ff",
                 bd=0,
             )
 
@@ -436,21 +436,8 @@ def apply_theme(root: tk.Misc) -> None:
                          ("disabled", COLOURS["panel"])],
         foreground=[("disabled", COLOURS["off"])],
     )
-    style.configure("TCombobox", fieldbackground=COLOURS["panel_alt"],
-                    background=COLOURS["panel_alt"], foreground=COLOURS["text"],
-                    arrowcolor=COLOURS["text"], borderwidth=0)
-    # A readonly combobox ignores `fieldbackground` unless the readonly state
-    # is mapped explicitly, and defaults to white -- which is glaring on a
-    # dark panel.
-    style.map(
-        "TCombobox",
-        fieldbackground=[("readonly", COLOURS["panel_alt"]),
-                         ("disabled", COLOURS["panel"])],
-        foreground=[("readonly", COLOURS["text"]),
-                    ("disabled", COLOURS["off"])],
-        selectbackground=[("readonly", COLOURS["panel_alt"])],
-        selectforeground=[("readonly", COLOURS["text"])],
-    )
+    from .dropdown_theme import apply_dropdown_theme
+    apply_dropdown_theme(root, COLOURS["panel_alt"])
     # The check glyph is drawn in `indicatorforeground` on a background of
     # `indicatorbackground`; left at the theme defaults both are near-white
     # and the tick is unreadable.
@@ -462,7 +449,7 @@ def apply_theme(root: tk.Misc) -> None:
             indicatorforeground=[("selected", "#ffffff")],
         )
     style.configure("TMenubutton", background=COLOURS["panel_alt"],
-                    foreground=COLOURS["text"], padding=(10, 5))
+                    foreground="#5aa9ff", padding=(10, 5))
     style.configure("TNotebook", background=COLOURS["bg"], borderwidth=0)
     style.configure("TNotebook.Tab", background=COLOURS["panel"],
                     foreground=COLOURS["muted"], padding=(14, 7))

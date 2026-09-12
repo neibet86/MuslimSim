@@ -140,6 +140,8 @@ class ControlServer:
             return int(self._server.server_address[1])
 
     def stop(self) -> None:
+        for service in getattr(self, "_moza_feedback_services", ()):
+            service.close()
         with self._lock:
             server = self._server
             thread = self._thread
@@ -604,6 +606,21 @@ class ControlServer:
                     raise LabError(f"{entry.key} does not have a verified power-cycle path")
                 return {"ok": True, "device": entry.key, "result": entry.power_cycle()}
             if command == "device_command":
+                key = str(request.get("device", ""))
+                action = str(request.get("action", "")).strip().lower()
+                # Preset files do not depend on simulator or motor availability.
+                # Keep a registered engine's existing live command route intact.
+                if key in {"moza_a210_ffb", "moza_ab6_ffb"} and action == "import_profile":
+                    from ..hardware.ffb_profiles import import_profile_file
+                    payload = dict(request.get("payload") or {})
+                    return {"ok": True, "device": key, "result": import_profile_file(
+                        key.removesuffix("_ffb"), str(payload.get("path", "")))}
+                with self._lock:
+                    registered = key in self._devices
+                if not registered and key in {"moza_a210_ffb", "moza_ab6_ffb"} and action in {"list_profiles", "select_profile"}:
+                    from ..hardware.ffb_profiles import offline_profile_command
+                    return {"ok": True, "device": key, "result": offline_profile_command(
+                        key.removesuffix("_ffb"), action, dict(request.get("payload") or {}))}
                 entry = self._device(request.get("device"))
                 if entry.command is None:
                     raise LabError(f"{entry.key} does not accept device commands")

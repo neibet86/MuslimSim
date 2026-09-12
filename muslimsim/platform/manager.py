@@ -35,6 +35,8 @@ class PlatformManager(tk.Tk):
             style.theme_use("vista")
         except tk.TclError:
             pass
+        from ..gui.dropdown_theme import apply_dropdown_theme
+        apply_dropdown_theme(self)
         header = ttk.Frame(self, padding=(14, 10))
         header.pack(fill="x")
         ttk.Label(header, text="MuslimSim Device Platform", font=("Segoe UI Semibold", 17)).pack(side="left")
